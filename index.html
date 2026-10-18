@@ -117,6 +117,26 @@ kbd { font: 700 11px/1 var(--body); background: var(--wool-2); border: 2px solid
 #fade { position: fixed; inset: 0; background: #1a1428; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 20; }
 #fade.on { opacity: 1; }
 
+/* Key bar, raid arrows, hint bubbles */
+#keybar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 8px); z-index: 5; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; max-width: calc(100vw - 620px); min-width: 300px;
+  padding: 5px 14px; border-radius: 99px; background: rgba(74, 47, 39, .55); color: #fffaf0; font: 700 12px var(--body); pointer-events: none; }
+#keybar span { white-space: nowrap; display: inline-flex; align-items: center; }
+#keybar kbd { background: rgba(255, 250, 240, .92); color: var(--cocoa); border-color: rgba(255, 250, 240, .4); margin-right: 5px; padding: 1px 5px; font-size: 11px; }
+#keybar:empty { display: none; }
+body.touch #keybar { display: none; }
+body:not(.touch) #card { bottom: calc(var(--sab) + 50px); }
+body:not(.touch) #weapon { bottom: calc(var(--sab) + 14px); }
+#threats { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
+.threat { position: absolute; left: 0; top: 0; width: 34px; height: 34px; display: grid; place-items: center; }
+.threat b { position: relative; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 17px var(--display); color: #fff; border: 2.5px solid var(--cocoa); }
+.threat .ar { position: absolute; inset: 0; }
+.threat .ar::after { content: ''; position: absolute; right: -9px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left: 11px solid var(--cocoa); }
+.threat.farm b { background: #ff5d6c; } .threat.city b { background: #ffa53d; }
+.threat b { animation: pulse .8s infinite; }
+.bubble.hintb { background: #fff4c2; border-color: #c99a14; color: var(--cocoa); white-space: normal; width: max-content; max-width: 230px; text-align: center; font-size: 12px; transition: opacity .3s; }
+.bubble.hintb::after { background: #fff4c2; border-color: #c99a14; }
+@media (max-width: 1100px) { #keybar { max-width: calc(100vw - 40px); bottom: calc(var(--sab) + 6px); } body:not(.touch) #weapon { bottom: calc(var(--sab) + 50px); } }
+
 /* Modal */
 #modal { position: fixed; inset: 0; background: rgba(74, 47, 39, .35); display: grid; place-items: center; z-index: 12; padding: calc(var(--sat) + 12px) max(12px, var(--sar)) calc(var(--sab) + 12px) max(12px, var(--sal)); }
 #modal-body { width: min(640px, 100%); max-height: min(82vh, 760px); overflow: auto; background: var(--wool); border: 3px solid var(--cocoa); border-radius: 20px; box-shadow: 0 6px 0 var(--cocoa); padding: 14px 16px 16px; animation: tin .2s ease-out; user-select: text; -webkit-user-select: text; touch-action: pan-y; }
@@ -179,6 +199,7 @@ body.touch #touch { display: block; }
 #b-shoot { right: calc(max(18px, var(--sar)) + 84px); bottom: calc(var(--sab) + 30px); width: 74px; height: 74px; background: #fdfbf2; }
 #b-cow { right: max(18px, var(--sar)); bottom: calc(var(--sab) + 14px); width: 64px; height: 64px; background: #fff1b0; }
 #b-cow.on { background: var(--berry); color: #fff; }
+#b-herd { right: max(18px, var(--sar)); bottom: calc(var(--sab) + 184px); width: 56px; height: 56px; background: #e3fbe9; }
 #b-jump { right: calc(max(18px, var(--sar)) + 90px); bottom: calc(var(--sab) + 116px); width: 56px; height: 56px; background: #d6f6ff; }
 body.touch #card { bottom: calc(var(--sab) + 184px); }
 body.touch #weapon { bottom: auto; top: calc(var(--sat) + 290px); width: 200px; }
@@ -235,8 +256,11 @@ body.touch #weapon small { display: none; }
     <button class="tbtn" id="b-shoot">Squirt</button>
     <button class="tbtn" id="b-cow">Grab<br>cow</button>
     <button class="tbtn" id="b-jump">Jump</button>
+    <button class="tbtn" id="b-herd">Herd</button>
   </div>
 </div>
+<div id="threats"></div>
+<div id="keybar" aria-label="Keys you can press right now"></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="modal" hidden><div id="modal-body"></div></div>
 <div id="fade"></div>
@@ -262,12 +286,12 @@ body.touch #weapon small { display: none; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/data.js?v=12"></script>
-<script src="js/engine.js?v=12"></script>
-<script src="js/models.js?v=12"></script>
-<script src="js/world.js?v=12"></script>
-<script src="js/explore.js?v=12"></script>
-<script src="js/ui.js?v=12"></script>
-<script src="js/game.js?v=12"></script>
+<script src="js/data.js?v=15"></script>
+<script src="js/engine.js?v=15"></script>
+<script src="js/models.js?v=15"></script>
+<script src="js/world.js?v=15"></script>
+<script src="js/explore.js?v=15"></script>
+<script src="js/ui.js?v=15"></script>
+<script src="js/game.js?v=15"></script>
 </body>
 </html>

@@ -139,15 +139,15 @@ function openHerd() {
   showModal(() => {
     const cowRows = COW_TYPES.map(k => {
       const T = COWS[k], f = state.found.cows[k], own = state.cows.filter(c => c.type === k).length, home = homeOf('cow', k);
-      return `<div class="row tall"><span class="nm">${swatch(f ? hexStr(T.body) : '#d9cbb8')}${f ? T.name : '???'}<small>${f ? `Makes ${MILK[T.milk].name}. Shot: ${MILK[T.milk].shot.desc}` : home ? `Lives in ${home.name}, ${home.where}.` : 'Rumored to live somewhere in the woods.'}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
+      return `<div class="row tall"><span class="nm">${swatch(f ? hexStr(T.body) : '#d9cbb8')}${f ? T.name : '???'}<small>${f ? `Makes ${MILK[T.milk].name}. Shot: ${MILK[T.milk].shot.desc}` : home ? `Rumored to roam ${home.where}.` : 'Rumored to roam somewhere in the woods.'}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
     }).join('');
     const sheepRows = SHEEP_TYPES.map(k => {
       const Br = BREEDS[k], f = state.found.sheep[k], own = state.sheep.filter(c => c.breed === k).length, home = k === 'seraph' ? { name: 'King Clawdius\'s cage', where: 'deep in Catnap Cavern' } : homeOf('sheep', k);
-      return `<div class="row tall"><span class="nm">${swatch(f ? TIERS[tierOf(Br.base)].color : '#d9cbb8')}${f ? Br.name : '???'}<small>${f ? `Natural whiteness ${Br.base}` : home ? `Found in ${home.name}, ${home.where}.` : 'Your very first sheep.'}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
+      return `<div class="row tall"><span class="nm">${swatch(f ? TIERS[tierOf(Br.base)].color : '#d9cbb8')}${f ? Br.name : '???'}<small>${f ? `Natural whiteness ${Br.base}` : home ? (k === 'seraph' ? `Locked in ${home.name}, ${home.where}.` : `Rumored to roam ${home.where}.`) : 'Your very first sheep.'}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
     }).join('');
     const nc = COW_TYPES.filter(k => state.found.cows[k]).length, ns = SHEEP_TYPES.filter(k => state.found.sheep[k]).length;
     return `<header class="mh"><h2>Herd Book</h2>${B('Close', closeModal, { cls: 'ghost x' })}</header><div class="list">
-      <p class="hint">Wild cows and sheep live in forest clearings. Follow the dirt trails, befriend them with E, and lead them into your pasture or meadow. Bring all 12 cows home to fuse the Super Milker at the Creamery.</p>
+      <p class="hint">Wild cows and sheep hide deep among the trees, each on its own. Search the forest, befriend them with E, and lead them into your pasture or meadow. Bring all 12 cows home, then fuse them into the Super Milker at the crystal in town.</p>
       <h3>Cows <small>${nc}/12 found</small></h3>${cowRows}<h3>Sheep <small>${ns}/${SHEEP_TYPES.length} found</small></h3>${sheepRows}</div>`;
   });
 }
@@ -205,13 +205,13 @@ function openHelp() {
     return `<header class="mh"><h2>How to play</h2>${B('Close', closeModal, { cls: 'ghost x' })}</header><div class="list">
       <h3>Controls</h3>
       <div class="keys"><span><kbd>WASD</kbd> or arrows: walk (<kbd>Shift</kbd> to run)</span><span><kbd>E</kbd>: main action</span><span><kbd>Space</kbd>: jump (hop right over fences!)</span><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>: other actions on the card</span>
-      <span><kbd>C</kbd>: pick up or put down a cow</span><span><kbd>F</kbd> or click: squeeze the udder (hold to keep squirting)</span><span><kbd>B</kbd> herd book · <kbd>I</kbd> bag · <kbd>Q</kbd> quests · <kbd>H</kbd> help · <kbd>M</kbd> sound</span><span>Mouse wheel: zoom</span></div>
+      <span><kbd>C</kbd>: pick up or put down a cow</span><span><kbd>G</kbd>: your herd follows you and fights (press again to send them home)</span><span><kbd>F</kbd> or click: squeeze the udder (hold to keep squirting)</span><span><kbd>B</kbd> herd book · <kbd>I</kbd> bag · <kbd>Q</kbd> quests · <kbd>H</kbd> help · <kbd>M</kbd> sound</span><span>Mouse wheel: zoom</span></div>
       <h3>How the game works</h3>
       <p><b>1. Farm.</b> Milk cows for milk. Shear sheep for wool. The whiter the fleece, the better the wool, so brush your sheep.</p>
       <p><b>2. Sell.</b> Put milk and wool in the Shipping Crate by your farmhouse for coins. Spend coins at the Moo Market on upgrades.</p>
-      <p><b>3. Explore.</b> Pick up a cow (she is your milk blaster) and follow the dirt trails into the forest. Clearings hide wild cows and whiter sheep. Befriend them (E) and lead them home. Kittens roam the woods and guard the rare ones.</p>
-      <p><b>4. Protect the city.</b> Feed wool to the Great Spindle to make yarn. Weave yarn into the Heart of the Shield. At 20:00 kittens raid the shield around the castle. Squirt them!</p>
-      <p><b>5. The big goal.</b> Bring all 12 kinds of cow home and fuse them into the Super Milker Cow at the Creamery. Use her rainbow milk to beat King Clawdius in Catnap Cavern, free the Seraph Sheep, then survive endless raids.</p>
+      <p><b>3. Explore.</b> Pick up a cow (she is your milk blaster) and search the dense forest around the castle. Wild cows and whiter sheep hide among the trees, the rarest ones deepest in. Befriend them (E) and lead them home. Kittens roam the woods and guard the rare ones.</p>
+      <p><b>4. Protect the city.</b> Feed wool to the Great Spindle. Its yarn flows into the shield around the castle by itself. At 20:00 kittens raid the shield, and 1 to 3 sneak onto your farm to knock your animals out. Arrows at the edge of the screen point at them. Squirt them! Press <kbd>G</kbd> and your whole herd follows you and squirts too. The more cows you own, the bigger the raids.</p>
+      <p><b>5. The big goal.</b> Bring all 12 kinds of cow home, then use the crystal in the middle of town to fuse them into the Super Milker Cow. Use her rainbow milk to beat King Clawdius in Catnap Cavern, free the Seraph Sheep, then survive endless raids.</p>
       <p>The quest box on the left always shows your next step, and its arrow points the way. Press <kbd>B</kbd> for the Herd Book.</p>
       <h3>Every milk is a different weapon</h3>
       ${shots}
@@ -235,12 +235,15 @@ function cardFor(it) {
         { key: '1', label: `Feed hay (${state.inv.hay})`, fn: () => feedHay(e), disabled: state.inv.hay <= 0 || c.happy >= 98 },
         { key: '2', label: 'Pet', fn: () => petCow(e), disabled: c.petCd > 0 }];
       if (state.inv.goods.super > 0) acts.push({ key: '3', label: 'Feed Super Milk', fn: () => feedSuper(e), cls: 'rainbow' });
+      acts.push({ key: 'G', label: herdFollowers().length ? 'Send herd home' : 'Herd: follow me', fn: toggleHerd });
+      if (e.ko > 0) return { title: c.name, sub: 'Knocked out by a kitten!', sw: '#c9c4ff', lines: [`zzzZZZ... wakes up in ${Math.ceil(e.ko)}s`], acts: [] };
       return { title: c.name + (c.super > 0 ? ' · SUPER MILKER' : ''), sub: `${T.name} · makes ${MILK[mk].name}`, sw: MILK[mk].color,
         bars: [{ label: 'Happiness', v: c.happy / 100, cls: 'berry' }],
         lines: [ready ? (full ? 'Bucket full! Sell or drink some milk.' : 'Ready to milk!') : `Milk ready in ${Math.ceil(c.cd)}s`, `Udder shot: ${spec.desc}${c.super > 0 ? ` (${c.super} left)` : ''}`], acts };
     }
     case 'sheep': {
       const e = it.ent, s = e.d, tier = tierOf(s.white);
+      if (e.ko > 0) return { title: s.name, sub: 'Knocked out by a kitten!', sw: '#c9c4ff', lines: [`zzzZZZ... wakes up in ${Math.ceil(e.ko)}s`], acts: [] };
       return { title: s.name, sub: `${BREEDS[s.breed].name}`, sw: TIERS[tier].color,
         bars: [{ label: `Whiteness ${Math.floor(s.white)} · ${TIERS[tier].name}`, v: s.white / 100, cls: 'wool' }, { label: s.fleece >= 1 ? 'Fleece fully grown' : 'Fleece growing', v: s.fleece, cls: 'mint' }],
         lines: [`${'★'.repeat(tier + 1)}${'☆'.repeat(5 - tier)} The whiter the fleece, the better the sheep.`],
@@ -280,10 +283,15 @@ function cardFor(it) {
         acts: [{ key: 'E', label: `Feed all wool (${woolTotal()})`, fn: feedSpindle, disabled: !woolTotal() }, { key: '1', label: `Collect yarn (${basketTotal()})`, fn: collectYarn, disabled: !basketTotal() }] };
     }
     case 'basket': return { title: 'Yarn Basket', sub: 'Fresh from the Great Spindle', sw: '#ff9fc0', lines: [`${basketTotal()} yarn waiting`], acts: [{ key: 'E', label: 'Collect yarn', fn: collectYarn, disabled: !basketTotal() }] };
-    case 'heart': return { title: 'Heart of the Shield', sub: 'Powers the force field around the city', sw: '#7fe8ff',
-      bars: [{ label: `Shield ${Math.round(state.field.power)}/${maxPower()}`, v: state.field.power / maxPower(), cls: 'shield' }],
-      lines: [state.flags.breached ? 'The shield is DOWN. Weave yarn to reach 25 power and restart it.' : 'Whiter yarn adds more power. A strong shield zaps kittens.'],
-      acts: [{ key: 'E', label: `Weave all yarn (${yarnTotal()})`, fn: weaveYarn, disabled: !yarnTotal() }] };
+    case 'heart': {
+      const fp = fusionCandidates(), have = COW_TYPES.filter(t => fp[t]).length, owned = state.cows.some(c => c.type === 'super'), acts = [];
+      if (!owned) acts.push({ key: 'E', label: canFuse() ? 'FUSE THE SUPER MILKER!' : `Fuse Super Milker (${have}/12 cows)`, fn: startFusion, disabled: !canFuse(), cls: canFuse() ? 'rainbow' : '' });
+      if (yarnTotal()) acts.push({ key: owned ? 'E' : '1', label: `Weave yarn from bag (${yarnTotal()})`, fn: weaveYarn });
+      return { title: 'Heart of the Shield', sub: 'The crystal that powers the force field', sw: '#7fe8ff',
+        bars: [{ label: `Shield ${Math.round(state.field.power)}/${maxPower()}`, v: state.field.power / maxPower(), cls: 'shield' }],
+        lines: [state.flags.breached ? 'The shield is DOWN. Feed wool to the Spindle: its yarn restarts the shield at 25 power.' : 'Yarn from the Great Spindle flows in here by itself. Whiter yarn adds more power.',
+          owned ? 'Prisma the Super Milker has been born!' : `Own all 12 kinds of cow and use this crystal to fuse them into the Super Milker. You have ${have}/12.`], acts };
+    }
     case 'temple': {
       const fl = faithLevel(), next = FAITH[fl + 1];
       return { title: 'Temple of the Great Sheep', sub: `Faith level ${fl} · ${state.faith} faith`, sw: '#ffe27a',
@@ -306,12 +314,7 @@ function cardFor(it) {
       return { title: 'Shipping Crate', sub: 'Sells at full market price', sw: '#c89b6d', lines: [m + w + g ? `Milk ${m}c · Wool ${w}c · Treats ${g}c` : 'Nothing to sell yet. Milk your cows and shear your sheep!', 'Buy new cows and upgrades at the Moo Market in the Sheep-a-verse.'],
         acts: [{ key: 'E', label: `Sell all milk (${m}c)`, fn: () => shipAll('milk'), disabled: !m }, { key: '1', label: `Sell all wool (${w}c)`, fn: () => shipAll('wool'), disabled: !w }, { key: '2', label: `Sell treats (${g}c)`, fn: () => shipAll('goods'), disabled: !g }] };
     }
-    case 'creamery': {
-      const fp = fusionCandidates(), have = COW_TYPES.filter(t => fp[t]).length, owned = state.cows.some(c => c.type === 'super'), acts = [];
-      if (!owned) acts.push({ key: 'E', label: canFuse() ? 'FUSE THE SUPER MILKER!' : `Fuse Super Milker (${have}/12 cows)`, fn: startFusion, disabled: !canFuse(), cls: canFuse() ? 'rainbow' : '' });
-      acts.push({ key: owned ? 'E' : '1', label: 'Open Milk Mixer', fn: openMixer });
-      return { title: 'Creamery', sub: 'Milk Mixer & Super Milker fusion', sw: '#ffb3d9', lines: [owned ? 'Prisma the Super Milker Cow lives on your farm!' : `Bring all 12 kinds of cow to your pasture and they fuse into ONE Super Milker Cow. You have ${have}/12.`], acts };
-    }
+    case 'creamery': return { title: 'Creamery', sub: 'Milk Mixer', sw: '#ffb3d9', lines: ['Mix two milks into a treat that sells for more or gives you a power-up.'], acts: [{ key: 'E', label: 'Open Milk Mixer', fn: openMixer }] };
     case 'cave': {
       const sc = player.carrying && (player.carrying.d.super > 0 || player.carrying.d.type === 'super');
       return { title: 'Catnap Cavern', sub: state.flags.clawdius ? 'King Clawdius is napping peacefully' : 'Lair of King Clawdius, the Cat-astrophe', sw: '#3d3350',
@@ -322,6 +325,7 @@ function cardFor(it) {
   return null;
 }
 function renderCard(it) {
+  updateKeybar(it);
   const el = $('#card');
   const c = it ? cardFor(it) : null;
   cardDirty = false;
@@ -389,8 +393,76 @@ function updateWeapon() {
   }
 }
 
+/* ---------- Bottom key bar: only the keys that matter right now ---------- */
+let keybarSig = '';
+function updateKeybar(it) {
+  if (isTouch || !state) return;
+  const c = it ? cardFor(it) : null, keys = [['WASD', 'Move'], ['Shift', 'Run'], ['Space', 'Jump']];
+  if (c && c.acts[0] && !c.acts[0].disabled) keys.push(['E', c.acts[0].label]);
+  if (player.carrying) { keys.push(['F', 'Squirt (hold)']); keys.push(['C', 'Put cow down']); }
+  else if (it && it.kind === 'cow' && !(it.ent.ko > 0)) keys.push(['C', 'Pick up cow']);
+  if (cowEnts.length) keys.push(['G', herdFollowers().length ? 'Send herd home' : 'Herd follow']);
+  keys.push(['B', 'Herd Book'], ['I', 'Bag'], ['Q', 'Quests'], ['H', 'Help']);
+  const sig = keys.map(k => k.join(':')).join('|'); if (sig === keybarSig) return; keybarSig = sig;
+  $('#keybar').innerHTML = keys.map(([k, l]) => `<span><kbd>${esc(k)}</kbd>${esc(l)}</span>`).join('');
+}
+
+/* ---------- Edge arrows pointing at raiding kittens ---------- */
+const threatEls = [];
+function updateThreats() {
+  const box = $('#threats'); let n = 0;
+  if (state && !player.inCave && !paused) {
+    const Wd = innerWidth, Ht = innerHeight, list = kittens.filter(k => k.state === 'move' && !k.cave && !k.guard && !k.roamer);
+    list.sort((a, b) => dist2(a.g.position.x, a.g.position.z, px(), pz()) - dist2(b.g.position.x, b.g.position.z, px(), pz()));
+    for (const k of list) {
+      if (n >= 8) break;
+      _v.set(k.g.position.x, 1, k.g.position.z).project(camera);
+      const sx = (_v.x * 0.5 + 0.5) * Wd, sy = (-_v.y * 0.5 + 0.5) * Ht;
+      if (_v.z < 1 && sx > 0 && sx < Wd && sy > 0 && sy < Ht) continue;
+      const cx = Wd / 2, cy = Ht / 2; let dx = sx - cx, dy = sy - cy; if (_v.z > 1) { dx = -dx; dy = -dy; }
+      const m = 34, sc = Math.min((cx - m) / Math.max(1e-4, Math.abs(dx)), (cy - m) / Math.max(1e-4, Math.abs(dy)));
+      let el = threatEls[n];
+      if (!el) { el = document.createElement('div'); el.innerHTML = '<i class="ar"></i><b>!</b>'; box.appendChild(el); threatEls[n] = el; }
+      el.className = 'threat ' + (k.goal === 'farm' ? 'farm' : 'city'); el.hidden = false;
+      el.style.transform = `translate(${(cx + dx * sc).toFixed(0)}px,${(cy + dy * sc).toFixed(0)}px) translate(-50%,-50%)`;
+      el.firstChild.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+      n++;
+    }
+  }
+  for (let i = n; i < threatEls.length; i++) threatEls[i].hidden = true;
+}
+
+/* ---------- Permanent hint bubbles over Granny and Captain Fleecewell ---------- */
+const persistBubbles = [];
+function updatePersist() {
+  if (!state) return;
+  if (!persistBubbles.length) for (const key of ['granny', 'fleecewell']) { const el = document.createElement('div'); el.className = 'bubble hintb'; floaters.appendChild(el); persistBubbles.push({ key, el }); }
+  const owned = state.cows.some(c => c.type === 'super'), have = COW_TYPES.filter(t => state.cows.some(c => c.type === t)).length;
+  for (const pb of persistBubbles) {
+    const n = npcEnts[pb.key], pos = n.g.position;
+    if (player.inCave || !$('#modal').hidden || dist2(px(), pz(), pos.x, pos.z) > 55) { pb.el.style.opacity = 0; continue; }
+    const text = owned ? 'Prisma the Super Milker is ready! Carry her into Catnap Cavern!'
+      : pb.key === 'granny' ? `Find all 12 kinds of cow (${have}/12), then use the crystal in town to fuse the Super Milker!`
+      : `Own all 12 kinds of cow (${have}/12), then touch this crystal to fuse them into the Super Milker!`;
+    if (pb.el.textContent !== text) pb.el.textContent = text;
+    _v.set(pos.x, pos.y + 5.3, pos.z).project(camera);
+    pb.el.style.transform = `translate(${((_v.x * 0.5 + 0.5) * innerWidth).toFixed(0)}px,${((-_v.y * 0.5 + 0.5) * innerHeight).toFixed(0)}px) translate(-50%,-100%)`;
+    pb.el.style.opacity = _v.z > 1 ? 0 : 1;
+  }
+}
+
 /* ---------- Minimap ---------- */
 const mm = $('#minimap'), mmx = mm.getContext('2d');
+let _mmForest = null;
+function minimapForest(S, tx, tz, sc) {
+  if (_mmForest && _mmForest.width === S) return _mmForest;
+  const c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  x.fillStyle = '#9edb7a'; x.fillRect(0, 0, S, S);
+  const r = Math.max(1.6, 3.4 * sc);
+  for (const [a, b] of W.treePts || []) { x.fillStyle = '#3f8f4a'; x.beginPath(); x.arc(tx(a), tz(b), r, 0, TAU); x.fill(); }
+  for (const [a, b] of W.purplePts || []) { x.fillStyle = '#6e559e'; x.beginPath(); x.arc(tx(a), tz(b), r, 0, TAU); x.fill(); }
+  return (_mmForest = c);
+}
 function drawMinimap() {
   const S = mm.width, x = mmx; x.clearRect(0, 0, S, S);
   if (player.inCave) {
@@ -401,13 +473,8 @@ function drawMinimap() {
     x.fillStyle = '#7fe8ff'; x.beginPath(); x.arc(tx(CAVE.x), tz(CAVE.z + 20), 4, 0, TAU); x.fill();
   } else {
     const sc = S / 390, tx = v => (v + 195) * sc, tz = v => (v + 180) * sc;
-    x.fillStyle = '#9edb7a'; x.fillRect(0, 0, S, S);
-    x.fillStyle = '#b39ce8'; x.beginPath(); x.arc(tx(155), tz(-20), 45 * sc, 0, TAU); x.fill();
+    x.drawImage(minimapForest(S, tx, tz, sc), 0, 0);
     x.fillStyle = '#e3cf9c'; x.fillRect(tx(-3.5), tz(-40), 7 * sc, 160 * sc); x.fillRect(tx(-51), tz(83), 90 * sc, 6 * sc); x.fillRect(tx(-120), tz(78), 60 * sc, 5 * sc);
-    x.strokeStyle = '#c9ab7a'; x.lineWidth = 2; for (const t of FOREST_TRAILS) { x.beginPath(); t.forEach(([a, b], i) => i ? x.lineTo(tx(a), tz(b)) : x.moveTo(tx(a), tz(b))); x.stroke(); }
-    x.strokeStyle = '#6fc3ee'; x.lineWidth = 3; x.beginPath(); W.stream.forEach(([a, b], i) => i ? x.lineTo(tx(a), tz(b)) : x.moveTo(tx(a), tz(b))); x.stroke();
-    for (const c of CLEARINGS) { const left = c.animals.some((an, i) => !state.wild[c.id + '-' + i]); x.fillStyle = left ? '#ffe27a' : '#b4dd96'; x.strokeStyle = '#4a2f27'; x.lineWidth = 1.5; x.beginPath(); x.arc(tx(c.x), tz(c.z), 4.5, 0, TAU); x.fill(); if (left) x.stroke(); }
-    for (const w of wilds) { if (w.cave) continue; if (!w.follow && dist2(w.g.position.x, w.g.position.z, px(), pz()) > 80) continue; x.fillStyle = w.species === 'cow' ? hexStr(COWS[w.type].body) : '#ffffff'; x.beginPath(); x.arc(tx(w.g.position.x), tz(w.g.position.z), 2.6, 0, TAU); x.fill(); }
     x.fillStyle = '#c4ef98'; for (const p of [COW_PEN, SHEEP_PEN]) x.fillRect(tx(p.x1), tz(p.z1), (p.x2 - p.x1) * sc, (p.z2 - p.z1) * sc);
     x.fillStyle = '#efe4d2'; x.beginPath(); x.arc(tx(C.x), tz(C.z), WALL_R * sc, 0, TAU); x.fill();
     x.strokeStyle = state.flags.breached ? '#ff6f91' : '#43c6ff'; x.lineWidth = 2.5; x.globalAlpha = 0.4 + 0.6 * state.field.power / maxPower(); x.beginPath(); x.arc(tx(C.x), tz(C.z), DOME_R * sc, 0, TAU); x.stroke(); x.globalAlpha = 1;
@@ -415,7 +482,7 @@ function drawMinimap() {
     for (const e of cowEnts) if (!e.carried) { x.fillStyle = hexStr(COWS[e.d.type].body); x.fillRect(tx(e.g.position.x) - 1.5, tz(e.g.position.z) - 1.5, 3, 3); }
     for (const k in farmerEnts) { const f = farmerEnts[k]; x.fillStyle = '#ff6f9f'; x.beginPath(); x.arc(tx(f.g.position.x), tz(f.g.position.z), 3.2, 0, TAU); x.fill(); }
     for (const k in npcEnts) { const n = npcEnts[k]; if (!n.mkType) continue; x.fillStyle = n.mkType === '!' ? '#ffc83d' : '#3fcf7a'; x.beginPath(); x.arc(tx(n.g.position.x), tz(n.g.position.z), 4, 0, TAU); x.fill(); x.strokeStyle = '#4a2f27'; x.lineWidth = 1.5; x.stroke(); }
-    for (const k of kittens) if (!k.cave && k.state === 'move' && (!(k.guard || k.roamer) || dist2(k.g.position.x, k.g.position.z, px(), pz()) < 60)) { x.fillStyle = k.def.boss ? '#ff3b6b' : '#ff7a3d'; x.beginPath(); x.arc(tx(k.g.position.x), tz(k.g.position.z), k.def.boss ? 4.5 : 2.4, 0, TAU); x.fill(); }
+    for (const k of kittens) if (!k.cave && k.state === 'move' && !k.guard && !k.roamer) { x.fillStyle = k.def.boss ? '#ff3b6b' : '#ff7a3d'; x.beginPath(); x.arc(tx(k.g.position.x), tz(k.g.position.z), k.def.boss ? 4.5 : 2.4, 0, TAU); x.fill(); }
     var ppx = tx(px()), ppz = tz(pz());
   }
   const cx = player.inCave ? S / 2 + (px() - CAVE.x) * (S / (CAVE.r * 2.4)) : ppx, cz = player.inCave ? S / 2 + (pz() - CAVE.z) * (S / (CAVE.r * 2.4)) : ppz;
@@ -448,6 +515,7 @@ function initUI() {
     else if (k === 'e' || k === 'enter') runCardKey('E');
     else if (k === '1' || k === '2' || k === '3') runCardKey(k);
     else if (k === 'c') toggleCarry();
+    else if (k === 'g') toggleHerd();
     else if (k === 'f') shootHeld = true;
     else if (k === 'b') openHerd();
     else if (k === 'i') openBag(); else if (k === 'q') openQuests(); else if (k === 'h') openHelp(); else if (k === 'm') toggleMute();
@@ -474,7 +542,7 @@ function initUI() {
   const endJoy = ev => { if (ev.pointerId !== joy.id) return; joy.active = false; joy.x = joy.y = 0; base.hidden = true; };
   zone.addEventListener('pointerup', endJoy); zone.addEventListener('pointercancel', endJoy);
   const tb = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', ev => { ev.preventDefault(); audioInit(); down(); el.classList.add('press'); }); el.addEventListener('pointerup', () => { up && up(); el.classList.remove('press'); }); el.addEventListener('pointerleave', () => { up && up(); el.classList.remove('press'); }); };
-  tb('#b-act', () => runCardKey('E')); tb('#b-jump', jump); tb('#b-shoot', () => { shootHeld = true; }, () => { shootHeld = false; }); tb('#b-cow', toggleCarry);
+  tb('#b-act', () => runCardKey('E')); tb('#b-herd', toggleHerd); tb('#b-jump', jump); tb('#b-shoot', () => { shootHeld = true; }, () => { shootHeld = false; }); tb('#b-cow', toggleCarry);
   // title
   $('#t-new').onclick = () => { audioInit(); const ns = $('#t-new'); if (loadSave() && !ns.dataset.sure) { ns.dataset.sure = '1'; ns.textContent = 'Tap again to replace your saved farm'; return; } try { localStorage.removeItem(SAVE_KEY); } catch (e) { } startGame(null); };
   $('#t-cont').onclick = () => { audioInit(); startGame(loadSave()); };

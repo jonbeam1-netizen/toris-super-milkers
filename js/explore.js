@@ -18,13 +18,25 @@ function spawnWilds() {
   wilds.length = 0; followers.length = 0;
   for (const c of CLEARINGS) c.animals.forEach((a, i) => {
     const id = wildId(c, i); if (state.wild[id]) return;
-    makeWild(a.c ? 'cow' : 'sheep', a.c || a.s, id, { x: c.x, z: c.z, r: c.r - 3, cid: c.id });
+    const sp = wildSpot(id, c); makeWild(a.c ? 'cow' : 'sheep', a.c || a.s, id, { x: sp.x, z: sp.z, r: 2.5, cid: id });
   });
   if (!state.wild.seraph) {
     const w = makeWild('sheep', 'seraph', 'seraph', { x: W.cage.position.x, z: W.cage.position.z, r: 1.4 });
     w.cave = true; w.caged = !state.flags.clawdius;
   }
   W.cageBars.visible = !state.flags.clawdius;
+}
+/* Each wild animal hides at its own spot deep among the trees, somewhere in its region.
+   The spot is seeded by its id, so it stays put between visits. */
+function wildSpot(id, c) {
+  let h = 2166136261; for (const ch of id) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
+  for (let t = 0; t < 400; t++) {
+    const a = rnd() * TAU, r = 14 + rnd() * 42, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
+    if (x < -188 || x > 188 || z < -172 || z > 132) continue;
+    if (forestFree(x, z, 2)) return { x, z };
+  }
+  return { x: c.x, z: c.z };
 }
 function makeWild(species, type, id, home) {
   const m = species === 'cow' ? makeCow(type) : makeSheep(type);
@@ -71,6 +83,7 @@ function updateWild(dt) {
   for (let i = wilds.length - 1; i >= 0; i--) {
     const w = wilds[i], pos = w.g.position; w.warnT -= dt;
     w.mk.position.y = (w.species === 'cow' ? 4.6 : 3.6) + Math.sin(elapsed * 3 + w.walk) * 0.15;
+    w.mk.visible = !w.follow && dist2(pos.x, pos.z, px(), pz()) < 12;
     if (w.follow) {
       const idx = followers.indexOf(w), want = 2.8 + idx * 2, d = dist2(pos.x, pos.z, px(), pz());
       if (d > 70) { pos.set(px() - Math.sin(player.face) * want, 0, pz() - Math.cos(player.face) * want); continue; }
@@ -87,6 +100,7 @@ function updateWild(dt) {
 }
 function moveFollowersTo(x, z, inCave) {
   followers.forEach((w, i) => { w.cave = inCave; w.g.position.set(x + rand(-2, 2), 0, z + 3 + i * 2); });
+  for (const e of cowEnts) if (e.following) e.g.position.set(x + rand(-4, 4), 0, z + 4 + rand(0, 4));
 }
 
 /* ---------- Kittens of the forest: they chase you, then give up and go home ---------- */
@@ -98,8 +112,12 @@ function spawnForestKitten(type, x, z, guard) {
 }
 function spawnForestKittens() {
   for (const c of CLEARINGS) {
-    if (c.animals.every((a, i) => state.wild[wildId(c, i)])) continue;
-    for (let i = 0; i < c.guards; i++) spawnForestKitten(c.guardTypes ? pick(c.guardTypes) : pick(['tabby', 'tabby', 'ginger']), c.x + rand(-5, 5), c.z + rand(-5, 5), true).cid = c.id;
+    const per = Math.ceil(c.guards / c.animals.length);
+    c.animals.forEach((an, i) => {
+      const id = wildId(c, i); if (state.wild[id] || !c.guards) return;
+      const sp = wildSpot(id, c);
+      for (let j = 0; j < per; j++) spawnForestKitten(c.guardTypes ? pick(c.guardTypes) : pick(['tabby', 'tabby', 'ginger']), sp.x + rand(-4, 4), sp.z + rand(-4, 4), true).cid = id;
+    });
   }
   for (let i = 0; i < 24; i++) spawnRoamer(false);
 }
@@ -140,17 +158,17 @@ function guardBrain(k, dt, dp) {
 /* ---------- The Super Milker: all 12 cows become one ---------- */
 function fusionCandidates() {
   const picks = {};
-  for (const e of cowEnts) if (!e.carried && !e.returning && !e.fusing && COWS[e.d.type] && !COWS[e.d.type].special && !picks[e.d.type]) picks[e.d.type] = e;
+  for (const e of cowEnts) if (!e.carried && !e.returning && !e.fusing && !(e.ko > 0) && COWS[e.d.type] && !COWS[e.d.type].special && !picks[e.d.type]) picks[e.d.type] = e;
   return picks;
 }
 function canFuse() { const p = fusionCandidates(); return COW_TYPES.every(t => p[t]) && !fusion && !state.cows.some(c => c.type === 'super'); }
 function startFusion() {
   if (!canFuse()) return;
   const p = fusionCandidates(), ents = COW_TYPES.map(t => p[t]);
-  const cx = (COW_PEN.x1 + COW_PEN.x2) / 2, cz = (COW_PEN.z1 + COW_PEN.z2) / 2;
-  ents.forEach((e, i) => { e.fusing = true; e.f0 = e.g.position.clone(); e.fa = i / ents.length * TAU; });
+  const cx = C.x, cz = C.z;
+  ents.forEach((e, i) => { e.following = false; e.fusing = true; e.f0 = e.g.position.clone(); e.fa = i / ents.length * TAU; });
   fusion = { t: 0, ents, cx, cz };
-  toast('All twelve cows rise into the sky... something AMAZING is happening!', 'love'); sfx('bless');
+  toast('The crystal hums... all twelve cows fly to it and rise into the sky!', 'love'); sfx('bless');
 }
 function updateFusion(dt) {
   if (!fusion) return;
@@ -163,10 +181,10 @@ function updateFusion(dt) {
   });
   if (f.t >= 3) {
     for (const e of f.ents) { scene.remove(e.g); cowEnts.splice(cowEnts.indexOf(e), 1); state.cows.splice(state.cows.indexOf(e.d), 1); }
-    const d = { type: 'super', name: 'Prisma', x: f.cx, z: f.cz, happy: 100 }; state.cows.push(d); normCow(d); spawnCowEnt(d);
+    const d = { type: 'super', name: 'Prisma', happy: 100 }; state.cows.push(d); normCow(d); const pe = spawnCowEnt(d); pe.g.position.set(f.cx + 4, 0, f.cz + 4); pe.following = true;
     burst('rainbow', f.cx, 4, f.cz, 90); burst('ring', f.cx, 1, f.cz, 1, 0xff9fff); sfx('level'); sfx('boom');
     stat('superFused'); addXP(150); fusion = null; saveGame(true);
-    toast('Behold PRISMA, the SUPER MILKER COW! Pick her up (C): her rainbow stream is the only thing that hurts King Clawdius.', 'good');
+    toast('Behold PRISMA, the SUPER MILKER COW! She follows you now. Pick her up (C): her rainbow stream is the only thing that hurts King Clawdius.', 'good');
   }
 }
 

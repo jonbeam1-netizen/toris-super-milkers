@@ -354,6 +354,7 @@ function buildWoods() {
     if (Math.random() < 0.9) grass.push(mtx(x + rand(-2.7, 2.7), 0.25, z + rand(-2.7, 2.7), 0.18, rand(0.4, 0.7), 0.18, rand(0, 3)));
     if (Math.random() < 0.35) flowers[pick(fkeys)].push(mtx(x + rand(-2.7, 2.7), 0.16, z + rand(-2.7, 2.7), 0.16, 0.12, 0.16));
   }
+  W.treePts = round.concat(pine, birch).map(t => [t.x, t.z]); W.purplePts = purple.map(t => [t.x, t.z]);
   // trees
   treeInstances(round, 0x5fbf62, 0x86d97e, 0x8a5e44);
   treeInstances(purple, 0x9a7bd9, 0xbba2ef, 0x5e4470);
@@ -412,8 +413,6 @@ function buildWoods() {
   for (const c of CLEARINGS) {
     disc(c.x, c.z, c.r + 2, 0xa6dc84, 0.03);
     for (let i = 0; i < 40; i++) { const a = rand(0, TAU), r = rand(c.r - 2, c.r + 1.5); flowers[pick(fkeys)].push(mtx(c.x + Math.cos(a) * r, 0.16, c.z + Math.sin(a) * r, 0.2, 0.14, 0.2)); }
-    sign(c.x + c.r * 0.55, c.z + c.r * 0.8, 0, [c.name], 1.8);
-    P(scene, G.cyl, 0xf2cf6b, c.x - c.r * 0.5, 0.6, c.z - c.r * 0.4, 0.8, 1.2, 0.8).rotation.z = Math.PI / 2;
   }
   for (const k of fkeys) inst(G.sphLo, M(+k), flowers[k], false);
   disc(150, -20, 50, 0x9cc292, 0.015);

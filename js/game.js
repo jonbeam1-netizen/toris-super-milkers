@@ -172,6 +172,7 @@ function initPlayer() {
    Farming actions
    ============================================================ */
 function milkCow(e) {
+  if (e.ko > 0) return;
   const c = e.d, T = COWS[c.type];
   if (e.carried) { toast('Put her down first to milk her into the bucket.'); return; }
   if (c.cd > 0) return;
@@ -194,6 +195,8 @@ function feedSuper(e) {
   toast(`${e.d.name} is now a SUPER MILKER! Pick her up (C) and squeeze for rainbow blasts.`, 'good');
 }
 function pickUpCow(e) {
+  if (e.ko > 0) { toast(`${e.d.name} is knocked out. Give her a moment!`); return; }
+  e.following = false;
   if (player.carrying) putDownCow();
   e.carried = true; e.returning = false; e.moving = false; player.carrying = e; e.g.scale.setScalar(0.62);
   sfx('pickup'); sfx('moo'); floatText(e.g.position.x, 3, e.g.position.z, 'Moo?!', 'milk');
@@ -202,12 +205,13 @@ function pickUpCow(e) {
 }
 function putDownCow() {
   const e = player.carrying; if (!e) return;
-  e.carried = false; player.carrying = null; e.g.scale.setScalar(0.9); e.g.rotation.set(0, player.face, 0);
+  e.carried = false; e.following = false; player.carrying = null; e.g.scale.setScalar(0.9); e.g.rotation.set(0, player.face, 0);
   const x = px() + Math.sin(player.face) * 2.2, z = pz() + Math.cos(player.face) * 2.2; e.g.position.set(x, 0, z);
   if (player.inCave || !inRect(x, z, COW_PEN)) { e.returning = true; if (!player.inCave) floatText(x, 3, z, 'Heading home!', 'milk'); }
   if (player.inCave) { e.g.position.set(SPAWN.x - 10, 0, SPAWN.z - 30); }
 }
 function shearSheep(e) {
+  if (e.ko > 0) return;
   const s = e.d; if (s.fleece < 1) return;
   const tier = tierOf(s.white), n = UPG.shears.vals[state.upg.shears];
   state.inv.wool[tier] += n; s.fleece = 0; stat('sheared'); if (tier >= 4) stat('snowShear');
@@ -217,6 +221,7 @@ function shearSheep(e) {
   if (tier === 5) { burst('sparkle', e.g.position.x, 2, e.g.position.z, 20); toast('Radiant wool! It glows like the first morning.', 'good'); }
 }
 function brushSheep(e) {
+  if (e.ko > 0) return;
   const s = e.d; if (s.brushCd > 0) return;
   const amt = UPG.brush.vals[state.upg.brush], gain = amt * (1 - (s.white / 100) * 0.62);
   s.white = clamp(s.white + gain, 0, 100); s.brushCd = 10; stat('brushed'); addXP(1);
@@ -264,6 +269,14 @@ function feedSpindle() {
 function collectYarn() {
   let n = 0; state.spindle.basket.forEach((c, t) => { state.inv.yarn[t] += c; n += c; state.spindle.basket[t] = 0; });
   if (n) { floatText(SPINDLE.x + 7, 2.5, SPINDLE.z + 5, `+${n} yarn`, 'wool'); sfx('coin'); }
+}
+function autoWeave(t) {
+  if (state.field.power >= maxPower() - 0.5) { state.spindle.basket[t]++; burst('sparkle', SPINDLE.x + 7, 2, SPINDLE.z + 5, 5); return; }
+  const g = TIERS[t].power * ampMult();
+  state.field.power = Math.min(maxPower(), state.field.power + g); stat('yarnWoven'); domeFlash = Math.max(domeFlash, 0.4);
+  burst('zap', C.x, 5, C.z, 8); burst('sparkle', SPINDLE.x, 9, SPINDLE.z, 6);
+  if (!player.inCave && dist2(px(), pz(), C.x, C.z) < 75) floatText(C.x, 7, C.z, `${TIERS[t].name} yarn: shield +${Math.round(g)}`, 'shield', 1.3);
+  if (state.flags.breached && state.field.power >= 25) { state.flags.breached = false; toast('The shield is back up! Any kittens inside get zapped out.', 'good'); }
 }
 function weaveYarn() {
   let n = 0, gained = 0;
@@ -464,13 +477,14 @@ function questTarget() {
   const q = curQuest(); if (!q) return null; const st = state.quest;
   let key = q.giver;
   if (st.phase === 'active') { if (questProgress(q).done) key = q.turnin || q.giver; else {
-    if (q.kind === 'ownCow' || q.kind === 'ownSheep' || q.kind === 'cowTypes') {
-      const want = w => q.kind === 'ownCow' ? (w.species === 'cow' && w.type === q.type) : q.kind === 'ownSheep' ? (w.species === 'sheep' && BREEDS[w.type].base >= q.minBase) : (w.species === 'cow' && !state.cows.some(c => c.type === w.type));
+    if (q.kind === 'ownCow' || q.kind === 'ownSheep') {
+      const fol = followers.some(w => q.kind === 'ownCow' ? w.species === 'cow' && w.type === q.type : w.species === 'sheep' && BREEDS[w.type].base >= q.minBase);
       const pen = q.kind === 'ownSheep' ? SHEEP_PEN : COW_PEN;
-      if (followers.some(want)) return { x: (pen.x1 + pen.x2) / 2, z: (pen.z1 + pen.z2) / 2, name: '' };
-      let best = null, bd = 1e9; for (const w of wilds) { if (w.cave || !want(w)) continue; const d = dist2(w.g.position.x, w.g.position.z, px(), pz()); if (d < bd) { bd = d; best = w; } }
-      if (best) return { x: best.g.position.x, z: best.g.position.z, name: '' };
+      if (fol) return { x: (pen.x1 + pen.x2) / 2, z: (pen.z1 + pen.z2) / 2, name: '' };
+      const reg = q.kind === 'ownCow' ? homeOf('cow', q.type) : CLEARINGS.find(c => c.id === 'berry');
+      if (reg) return { x: reg.x, z: reg.z, name: '' };
     }
+    if (q.kind === 'cowTypes') return null;
     const map = { superFused: CREAMERY, milked: COW_PEN, sheared: SHEEP_PEN, brushed: SHEEP_PEN, snowShear: SHEEP_PEN, woolSpun: SPINDLE, yarnWoven: C, bought: MARKET, superMixed: CREAMERY, clawdius: CAVE_DOOR, problems: FARMERS.hazel.home };
     const t = map[q.stat]; if (t) return { x: t.x1 !== undefined ? (t.x1 + t.x2) / 2 : t.x, z: t.z1 !== undefined ? (t.z1 + t.z2) / 2 : t.z, name: '' };
     if (q.kind === 'item' && q.item.type === 'milk') return { x: -35, z: 53, name: '' };
@@ -535,7 +549,7 @@ function spawnProj(x, y, z, ang, target, sh, dmgScale, lane = 0) {
   const q = { m, link, w: size * 0.28, lane, born: elapsed, newer: null, dead: false, vx: Math.sin(ang) * sp, vy, vz: Math.cos(ang) * sp, life: 1.1, spec, key: sh.key, color: sh.color, hit: new Set(), bounces: spec.fx === 'bounce' ? 1 : 0, isSuper, mat, dmgScale: dmgScale || 1 };
   const lp = player.lastProjs || (player.lastProjs = []), prev = lp[lane];
   if (prev && !prev.dead && elapsed - prev.born < 0.15) prev.newer = q;
-  lp[lane] = q; projs.push(q);
+  lp[lane] = q; q.auto = !!sh.auto; projs.push(q);
 }
 function shotDamage(p, k) {
   let d = p.spec.dmg * (p.dmgScale || 1) * UPG.splash.vals[state.upg.splash] * (hasBuff('strong') ? 2 : 1);
@@ -618,7 +632,7 @@ function linkStream() {
   for (let i = 0; i < projs.length; i++) {
     const p = projs[i]; let nb = null;
     if (p.newer && !p.newer.dead) nb = p.newer.m.position;
-    else if (!p.newer && cw && shootHeld && player.lastProjs && player.lastProjs[p.lane] === p && elapsed - p.born < 0.1) nb = _nz;
+    else if (!p.newer && !p.auto && cw && shootHeld && player.lastProjs && player.lastProjs[p.lane] === p && elapsed - p.born < 0.1) nb = _nz;
     if (!nb) { p.link.visible = false; continue; }
     const a = p.m.position, d = a.distanceTo(nb);
     if (d > 3.4 || d < 0.01) { p.link.visible = false; continue; }
@@ -665,12 +679,14 @@ function spawnKitten(type, goal, at) {
   return k;
 }
 function waveList(n) {
-  const L = [], count = Math.min(3 + (n - 1) * 2, 26);
+  const L = [], count = Math.min(3 + (n - 1) * 2 + Math.floor(state.cows.length * 1.5), 48);
   for (let i = 0; i < count; i++) {
     let t = 'tabby'; const r = Math.random();
     if (n >= 2 && r < 0.22) t = 'ginger'; else if (n >= 3 && r < 0.36) t = 'chonk'; else if (n >= 4 && r < 0.52) t = 'shadow'; else if (n >= 6 && r < 0.64) t = 'siamese';
-    L.push({ t, at: i * (24 / count) + rand(0, 1.5), goal: Math.random() < 0.28 ? 'farm' : 'field' });
+    L.push({ t, at: i * (24 / count) + rand(0, 1.5), goal: 'field' });
   }
+  const farmN = Math.min(3, 1 + Math.floor((n - 1) / 3));
+  for (let i = 0; i < farmN; i++) L.push({ t: n >= 3 && Math.random() < 0.35 ? 'ginger' : 'tabby', at: rand(2, 20), goal: 'farm' });
   if (state.flags.duchessPending || n % 5 === 0) L.push({ t: 'duchess', at: 10, goal: 'field' });
   return L.sort((a, b) => a.at - b.at);
 }
@@ -687,7 +703,7 @@ function endRaid() {
 }
 function breach() {
   state.flags.breached = true; raid.breachedThisRaid = true; state.field.power = 0;
-  toast('The force field has fallen! Kittens are invading the city. Weave yarn at the Heart to restore it (25 power).', 'bad'); sfx('alarm');
+  toast('The force field has fallen! Kittens are invading the city. Feed wool to the Spindle to power it back up (25 to restart).', 'bad'); sfx('alarm');
 }
 function scratchField(k) {
   state.field.power -= k.def.dmg; domeFlash = Math.max(domeFlash, 0.5); sfx('zap');
@@ -698,10 +714,10 @@ function scratchField(k) {
   if (k.hp <= 0) defeatKitten(k, false);
 }
 function harass(k, e) {
-  if (!e) return;
-  if (e.d.white !== undefined) { e.d.white = clamp(e.d.white - 10, 0, 100); burst('mud', e.g.position.x, 1, e.g.position.z, 10); floatText(e.g.position.x, 2.6, e.g.position.z, 'Rolled in mud!', 'bad'); sfx('baa'); }
-  else { e.d.happy = clamp(e.d.happy - 25, 0, 100); e.spook = 3; e.moving = true; floatText(e.g.position.x, 3, e.g.position.z, 'Spooked!', 'bad'); sfx('moo'); }
-  sfx('meow');
+  if (!e || e.ko > 0) return;
+  e.ko = 25; e.moving = false; e.following = false; e.spook = 0;
+  floatText(e.g.position.x, 3, e.g.position.z, 'Knocked out!', 'bad'); burst('zzz', e.g.position.x, 2, e.g.position.z, 4);
+  sfx(e.d.white !== undefined ? 'baa' : 'moo'); sfx('meow');
 }
 function hurtPlayer(n, src) {
   if (player.inv > 0 || hasBuff('guard') || player.dead) return;
@@ -748,7 +764,7 @@ function updateKittens(dt) {
       tx = px(); tz = pz(); arrive = 0.9 * k.def.scale + 0.4;
       if (dp < 1.3 * k.def.scale + 0.6 && k.cd <= 0) { k.cd = 1.2; hurtPlayer(k.def.boss ? 2 : 1, k); }
     } else if (k.goal === 'farm') {
-      if (!k.tgt || k.tgtT <= 0) { const all = cowEnts.filter(e => !e.carried).concat(sheepEnts); k.tgt = all.length ? pick(all) : null; k.tgtT = 10; }
+      if (!k.tgt || k.tgtT <= 0) { const all = cowEnts.filter(e => !e.carried && !e.following && !e.fusing && !(e.ko > 0) && inRect(e.g.position.x, e.g.position.z, COW_PEN)).concat(sheepEnts.filter(e => !(e.ko > 0))); k.tgt = all.length ? pick(all) : null; k.tgtT = 10; }
       k.tgtT -= dt;
       if (k.tgt) { tx = k.tgt.g.position.x; tz = k.tgt.g.position.z; arrive = 1.6; if (dist2(p.x, p.z, tx, tz) < 2.2 && k.cd <= 0) { k.cd = 3; harass(k, k.tgt); k.tgt = null; if (++k.harass >= 3) k.goal = 'field'; } }
       else k.goal = 'field';
@@ -974,6 +990,13 @@ function updateCows(dt) {
     if (d.super > 0 || d.type === 'super') { e.m.bodyM.emissive.setHSL((elapsed * 0.4 + e.walk) % 1, 0.9, 0.28); e.superOn = true; }
     else if (e.superOn) { e.superOn = false; e.m.bodyM.emissive.setHex(COWS[d.type].glow || 0); }
     if (e.carried) { e.ind.visible = false; continue; }
+    if (e.ko > 0) {
+      e.ko -= dt; e.ind.visible = false; e.g.rotation.z = lerp(e.g.rotation.z, Math.PI / 2, Math.min(1, dt * 8)); e.g.position.y = 0.95;
+      if (Math.random() < dt * 1.6) burst('zzz', e.g.position.x, 2.4, e.g.position.z, 1);
+      if (e.ko <= 0) { e.g.rotation.z = 0; e.g.position.y = 0; floatText(e.g.position.x, 3, e.g.position.z, 'Huh? Moo!', 'milk'); }
+      continue;
+    }
+    if (e.following) { e.ind.visible = d.cd <= 0; herdMove(e, dt); continue; }
     e.ind.visible = d.cd <= 0; e.ind.position.y = 4 + Math.sin(elapsed * 3 + e.walk) * 0.15;
     const pos = e.g.position;
     if (e.returning) {
@@ -1009,6 +1032,12 @@ function updateSheep(dt) {
     }
     e.ind.visible = s.fleece >= 1; e.ind.position.y = 3.3 + Math.sin(elapsed * 3 + e.walk) * 0.15;
     if (e.m.halo.visible) e.m.halo.rotation.z += dt;
+    if (e.ko > 0) {
+      e.ko -= dt; e.ind.visible = false; e.g.rotation.z = lerp(e.g.rotation.z, Math.PI / 2, Math.min(1, dt * 8)); e.g.position.y = 0.7;
+      if (Math.random() < dt * 1.6) burst('zzz', e.g.position.x, 1.8, e.g.position.z, 1);
+      if (e.ko <= 0) { e.g.rotation.z = 0; e.g.position.y = 0; floatText(e.g.position.x, 2.6, e.g.position.z, 'Baa?', 'wool'); }
+      continue;
+    }
     wander(e, dt, () => penRandom(SHEEP_PEN), 1.4, e.m.legs);
     const pos = e.g.position; pos.x = clamp(pos.x, SHEEP_PEN.x1 + 1.5, SHEEP_PEN.x2 - 1.5); pos.z = clamp(pos.z, SHEEP_PEN.z1 + 1.5, SHEEP_PEN.z2 - 1.5);
     e.m.head.rotation.x = e.moving ? 0 : Math.sin(elapsed + e.walk) * 0.2 + 0.15;
@@ -1080,7 +1109,7 @@ function updateWorld(dt) {
   }
   if (spinning) {
     sp.prog += dt / (UPG.gears.vals[state.upg.gears] / (faithLevel() >= 5 ? 2 : 1));
-    if (sp.prog >= 1) { sp.prog = 0; const t = sp.queue.shift(); sp.basket[t]++; burst('sparkle', SPINDLE.x + 7, 2, SPINDLE.z + 5, 5); }
+    if (sp.prog >= 1) { sp.prog = 0; autoWeave(sp.queue.shift()); }
   }
   const wspd = spinning ? 3 : sp.momentum > 0 ? 0.7 : 0;
   W.spWheel.rotation.z -= dt * wspd; W.spinner.rotation.y += dt * wspd * 4; W.spRing.rotation.z += dt * (0.3 + wspd * 0.2);
@@ -1169,6 +1198,45 @@ function jump() {
   player.jvy = 10.5; player.jy = 0.01; sfx('pickup');
   if (player.carrying && Math.random() < 0.3) sfx('moo');
 }
+const herdFollowers = () => cowEnts.filter(e => e.following);
+function toggleHerd() {
+  if (!running || paused) return;
+  const f = herdFollowers();
+  if (f.length) { f.forEach(e => { e.following = false; e.returning = true; }); toast('Your herd is heading home to the pasture.'); sfx('moo'); cardDirty = true; return; }
+  const list = cowEnts.filter(e => !e.carried && !e.fusing && !(e.ko > 0));
+  if (!list.length) { toast('No cows are free to follow you right now.'); return; }
+  list.forEach(e => { e.following = true; e.returning = false; e.moving = false; });
+  toast(`Moo! ${list.length} cow${list.length > 1 ? 's are' : ' is'} following you and will squirt any kitten nearby. Press G to send them home.`, 'love'); sfx('moo');
+  cardDirty = true;
+}
+function herdMove(e, dt) {
+  const list = herdFollowers(), i = list.indexOf(e), row = Math.floor(i / 4), col = (i % 4) - 1.5;
+  const back = 3.4 + row * 2.6, side = col * 2.4, f = player.face;
+  const tx = px() - Math.sin(f) * back + Math.cos(f) * side, tz = pz() - Math.cos(f) * back - Math.sin(f) * side;
+  const pos = e.g.position, dx = tx - pos.x, dz = tz - pos.z, d = Math.hypot(dx, dz);
+  if (d > 70) { pos.set(tx, 0, tz); return; }
+  let mv = false;
+  if (d > 0.7) { const sp = Math.min(13, d * 2.2) * dt; pos.x += dx / d * sp; pos.z += dz / d * sp; mv = true; if (!(e.streamT > 0)) e.g.rotation.y = turnTo(e.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); }
+  e.walk += mv ? dt * 12 : 0; const s = mv ? Math.sin(e.walk) * 0.5 : 0; e.m.legs.forEach((L, j) => L.rotation.x = (j === 0 || j === 3) ? s : -s);
+  pos.y = mv ? Math.abs(Math.sin(e.walk)) * 0.12 : 0;
+  const sq = Math.max(0, e.squash); e.g.scale.set(0.9 * (1 + sq * 0.3), 0.9 * (1 - sq * 0.3), 0.9);
+  // squirt the nearest kitten with a short stream of her own milk
+  e.atk = (e.atk || 0) - dt;
+  if (e.streamT > 0 && e.target && e.target.state === 'move') {
+    e.streamT -= dt; e.shotT = (e.shotT || 0) - dt;
+    const k = e.target, ang = Math.atan2(k.g.position.x - pos.x, k.g.position.z - pos.z); e.g.rotation.y = ang;
+    if (e.shotT <= 0) {
+      e.shotT = STREAM_DT;
+      const isSup = e.d.type === 'super' || e.d.super > 0, mk = COWS[e.d.type].milk, spec = isSup ? SUPER_SHOT : MILK[mk].shot;
+      spawnProj(pos.x + Math.sin(ang) * 1.6, 1.1, pos.z + Math.cos(ang) * 1.6, ang, k, { spec, color: isSup ? 0xffffff : MILK[mk].hex, key: isSup ? 'super' : mk, auto: true }, STREAM_DT / spec.cd * 0.6, 'herd' + i);
+      e.squash = 0.12;
+    }
+  } else if (e.atk <= 0) {
+    let best = null, bd = 15;
+    for (const k of kittens) { if (k.state !== 'move' || k.cave !== player.inCave) continue; const kd = dist2(pos.x, pos.z, k.g.position.x, k.g.position.z); if (kd < bd) { bd = kd; best = k; } }
+    if (best) { e.target = best; e.streamT = 0.6; e.atk = 1.2 + rand(0, 0.3); } else e.atk = 0.4;
+  }
+}
 function toggleCarry() {
   if (player.carrying) { putDownCow(); cardDirty = true; return; }
   let best = null, bd = 3.6;
@@ -1198,7 +1266,7 @@ function frame(now) {
     camera.position.lerp(camTarget, 1 - Math.pow(0.0015, dt));
     camera.lookAt(p.x, 1.2, p.z - 1.5);
     sun.position.set(p.x + 30, 55, p.z + 22); sun.target.position.set(p.x, 0, p.z);
-    updateWeapon();
+    updateWeapon(); updateThreats(); updatePersist();
     uiT -= dt; if (uiT <= 0) { uiT = 0.2; updateHUD(); updateMarkers(); }
     cardT -= dt; if (cardT <= 0 || cardDirty) { cardT = 0.15; renderCard(findTarget()); }
     mmT -= dt; if (mmT <= 0) { mmT = 0.15; drawMinimap(); }
