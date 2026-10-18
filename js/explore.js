@@ -136,8 +136,8 @@ function makeWild(species, type, id, home) {
   const a = rand(0, TAU), r = rand(0, home.r);
   m.g.position.set(home.x + Math.cos(a) * r, 0, home.z + Math.sin(a) * r); m.g.rotation.order = 'YXZ'; scene.add(m.g);
   const isNew = species === 'cow' ? !state.found.cows[type] : !state.found.sheep[type];
-  const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex(isNew ? '?' : '+', isNew ? '#ffc83d' : '#bfe8ff'), depthWrite: false }));
-  mk.scale.setScalar(0.9); mk.position.y = species === 'cow' ? 4.6 : 3.6; m.g.add(mk);
+  const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex(isNew ? '?' : '+', isNew ? '#ffc83d' : '#bfe8ff'), depthWrite: false, depthTest: false }));
+  mk.renderOrder = 10; mk.scale.setScalar(0.9); mk.position.y = species === 'cow' ? 4.6 : 3.6; m.g.add(mk);
   const w = { id, species, type, m, g: m.g, home, tx: m.g.position.x, tz: m.g.position.z, timer: rand(0, 4), walk: rand(0, 6), moving: false, follow: false, mk, cave: false, caged: false, warnT: 0, locked: false };
   w.it = { kind: 'wild', ent: w }; wilds.push(w); return w;
 }

@@ -338,6 +338,13 @@ function forestFree(x, z, pad = 0) {
   if (nearPolyline(x, z, STREAM, 4 + pad)) return false;
   return true;
 }
+/* Keep a wide-open glade around every wild animal so trees never hide it, with extra room on the camera side (south) */
+let _wildSpots = null;
+function nearWildSpot(x, z) {
+  if (!_wildSpots) { _wildSpots = []; for (const c of CLEARINGS) c.animals.forEach((a, i) => _wildSpots.push(wildSpot(c.id + '-' + i, c))); }
+  for (const p of _wildSpots) { const dx = (x - p.x) / 9, dz = (z - p.z) / (z > p.z ? 16 : 8); if (dx * dx + dz * dz < 1) return true; }
+  return false;
+}
 function buildWoods() {
   const round = [], pine = [], birch = [], purple = [], bush1 = [], bush2 = [], grass = [], rocks = [], boulders = [], moss = [], stumps = [], logs = [], logEnds = [], capsR = [], capsB = [], stems = [];
   const flowers = { 0xff7aa8: [], 0xffe27a: [], 0xffffff: [], 0xc9a8ff: [], 0xff9f5a: [] }, fkeys = Object.keys(flowers);
@@ -345,7 +352,7 @@ function buildWoods() {
   const S = 5.4;
   for (let gx = -194; gx <= 194; gx += S) for (let gz = -177; gz <= 137; gz += S) {
     const x = gx + rand(-1.8, 1.8), z = gz + rand(-1.8, 1.8);
-    if (!forestFree(x, z) || Math.random() < 0.12) continue;
+    if (!forestFree(x, z) || nearWildSpot(x, z) || Math.random() < 0.12) continue;
     const s = rand(0.85, 1.5);
     if (x > 118) purple.push({ x, z, s });
     else { const r = Math.random(); (r < 0.52 ? round : r < 0.85 ? pine : birch).push({ x, z, s }); }
@@ -369,7 +376,7 @@ function buildWoods() {
   inst(G.sphLo, M(0x56b05a), bush1, false); inst(G.sphLo, M(0x6fc565), bush2, false);
   inst(G.cone4, M(0x5aa94f), grass, false);
   // rocks, boulders, stumps, fallen logs, mushrooms scattered through the woods
-  const spot = (pad = 0) => { for (let i = 0; i < 40; i++) { const x = rand(-192, 192), z = rand(-176, 136); if (forestFree(x, z, pad)) return { x, z }; } return null; };
+  const spot = (pad = 0) => { for (let i = 0; i < 40; i++) { const x = rand(-192, 192), z = rand(-176, 136); if (forestFree(x, z, pad) && !nearWildSpot(x, z)) return { x, z }; } return null; };
   for (let i = 0; i < 260; i++) { const p = spot(); if (p) rocks.push(mtx(p.x, 0.25, p.z, rand(0.35, 0.9), rand(0.25, 0.6), rand(0.35, 0.9), rand(0, 3), rand(0, 1))); }
   for (let i = 0; i < 70; i++) {
     const p = spot(1); if (!p) continue; const s = rand(1.6, 3.4);

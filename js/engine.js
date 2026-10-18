@@ -132,8 +132,8 @@ function textSprite(text, o = {}) {
   if (o.bg !== null) { x.fillStyle = o.bg || 'rgba(74,47,39,0.8)'; rr(x, 0, 0, w, h, h / 2); x.fill(); }
   x.fillStyle = o.color || '#fffaf0'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, w / 2, h / 2 + 2);
   const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true }));
-  const sc = o.scale || 0.8; s.scale.set(sc * w / h, sc, 1); s.renderOrder = 5; return s;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, depthTest: false, transparent: true }));
+  const sc = o.scale || 0.8; s.scale.set(sc * w / h, sc, 1); s.renderOrder = 10; return s;
 }
 function signTex(lines, bg = '#fff4dc') {
   return mkTex((x, w, h) => {

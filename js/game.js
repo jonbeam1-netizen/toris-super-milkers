@@ -132,14 +132,14 @@ function buildNPCs() {
   for (const key in NPC_DEF) {
     const o = NPC_DEF[key], f = makeFolk(o); f.g.position.set(o.x, 0, o.z); scene.add(f.g);
     const label = textSprite(o.name, { fs: 30, scale: 0.55 }); label.position.y = 3.25; f.g.add(label);
-    const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('!', '#ffc83d'), depthWrite: false })); mk.scale.setScalar(1); mk.position.y = 4.3; mk.visible = false; f.g.add(mk);
+    const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('!', '#ffc83d'), depthWrite: false, depthTest: false })); mk.renderOrder = 10; mk.scale.setScalar(1); mk.position.y = 4.3; mk.visible = false; f.g.add(mk);
     npcEnts[key] = { key, f, g: f.g, marker: mk, mkType: '', it: { kind: 'npc', key }, home: { x: o.x, z: o.z } };
     circC(o.x, o.z, 0.8);
   }
   for (const key in FARMERS) {
     const o = FARMERS[key], h = makeHuman(o.look); h.g.position.set(o.home.x, 0, o.home.z); scene.add(h.g);
     const label = textSprite(o.name, { fs: 30, scale: 0.55, bg: 'rgba(204,60,110,0.85)' }); label.position.y = 3.95; h.g.add(label);
-    const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('♥', '#ff9fc0'), depthWrite: false })); mk.scale.setScalar(1); mk.position.y = 4.9; mk.visible = false; h.g.add(mk);
+    const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex('♥', '#ff9fc0'), depthWrite: false, depthTest: false })); mk.renderOrder = 10; mk.scale.setScalar(1); mk.position.y = 4.9; mk.visible = false; h.g.add(mk);
     farmerEnts[key] = { key, h, g: h.g, marker: mk, tx: o.home.x, tz: o.home.z, timer: rand(1, 4), walk: 0, it: { kind: 'farmer', key } };
   }
   const robes = [0xff9fc0, 0x9fd8ff, 0xfff1a8, 0xc9b0ff, 0xa8f0c6, 0xffc9a8];
