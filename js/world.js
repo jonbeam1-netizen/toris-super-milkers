@@ -77,9 +77,17 @@ function hexTexture() {
 function bannerTex(bg, fg) {
   return mkTex((x, w, h) => {
     x.fillStyle = bg; x.fillRect(0, 0, w, h);
-    x.fillStyle = fg; [[64, 70, 26], [44, 82, 20], [84, 82, 20], [52, 58, 18], [76, 58, 18]].forEach(([a, b, r]) => { x.beginPath(); x.arc(a, b, r, 0, TAU); x.fill(); });
-    x.fillStyle = '#4a2f27'; x.beginPath(); x.ellipse(64, 104, 14, 16, 0, 0, TAU); x.fill();
-    x.fillStyle = '#ffc83d'; x.fillRect(0, 0, w, 10); x.fillRect(0, h - 10, w, 10);
+    x.fillStyle = '#ffc83d'; x.fillRect(0, 0, w, 12); x.beginPath(); x.moveTo(0, h - 24); x.lineTo(w / 2, h); x.lineTo(w, h - 24); x.lineTo(w, h); x.lineTo(0, h); x.fill();
+    // the Great Sheep: fluffy wool, cocoa face, ears, sparkly eyes, golden halo
+    x.strokeStyle = '#ffe27a'; x.lineWidth = 6; x.beginPath(); x.ellipse(64, 30, 30, 9, 0, 0, TAU); x.stroke();
+    x.fillStyle = fg; [[64, 64, 30], [38, 72, 18], [90, 72, 18], [44, 52, 17], [84, 52, 17], [64, 44, 18]].forEach(([a, b, r]) => { x.beginPath(); x.arc(a, b, r, 0, TAU); x.fill(); });
+    x.fillStyle = '#4a2f27';
+    x.beginPath(); x.ellipse(30, 86, 14, 7, -0.5, 0, TAU); x.fill(); x.beginPath(); x.ellipse(98, 86, 14, 7, 0.5, 0, TAU); x.fill();
+    x.beginPath(); x.ellipse(64, 92, 22, 27, 0, 0, TAU); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(55, 88, 6, 0, TAU); x.arc(73, 88, 6, 0, TAU); x.fill();
+    x.fillStyle = '#4a2f27'; x.beginPath(); x.arc(56, 89, 3, 0, TAU); x.arc(74, 89, 3, 0, TAU); x.fill();
+    x.fillStyle = '#ff9fc0'; x.beginPath(); x.arc(50, 101, 4, 0, TAU); x.arc(78, 101, 4, 0, TAU); x.fill();
+    x.fillStyle = '#4a2f27'; x.font = '700 15px Fredoka, Nunito, sans-serif'; x.textAlign = 'center'; x.fillStyle = '#fffaf0'; x.fillText('GREAT SHEEP', 64, 136);
   }, 128, 160);
 }
 function stripeTex(a, b) { return mkTex((x, w, h) => { for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? a : b; x.fillRect(i * w / 8, 0, w / 8, h); } }, 128, 32); }
@@ -311,32 +319,104 @@ function buildCity() {
   circC(BOARD.x, BOARD.z, 1.8);
 }
 
+function segDist(x, z, ax, az, bx, bz) {
+  const vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz; let t = L ? ((x - ax) * vx + (z - az) * vz) / L : 0; t = clamp(t, 0, 1);
+  return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
+}
+function nearPolyline(x, z, pts, pad) { for (let i = 0; i < pts.length - 1; i++) if (segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) < pad) return true; return false; }
+const STREAM = [[-196, -42], [-170, -36], [-150, -26], [-128, -12], [-108, -2], [-88, 6], [-70, 9], [-58, 8]];
+function forestFree(x, z, pad = 0) {
+  if (x > -66 - pad && x < 70 + pad && z > 18 - pad && z < 120) return false;           // farm
+  if (x > -136 - pad && x < -58 + pad && z > 28 - pad && z < 120) return false;          // Buttercup Hollow
+  if (Math.abs(x) < 9 + pad && z > -45 && z < 120) return false;                          // main road
+  if (dist2(x, z, C.x, C.z) < DOME_R + 7 + pad) return false;                              // castle & shield
+  if (Math.abs(z + 20) < 5 + pad && x > 8 && x < 165) return false;                        // Whisker Woods road
+  if (dist2(x, z, CAVE_DOOR.x + 8, CAVE_DOOR.z) < 22 + pad) return false;                  // cave mountain
+  if (dist2(x, z, POND.x, POND.z) < 12 + pad) return false;
+  for (const c of CLEARINGS) if (dist2(x, z, c.x, c.z) < c.r + 3 + pad) return false;
+  for (const t of FOREST_TRAILS) if (nearPolyline(x, z, t, 4.2 + pad)) return false;
+  if (nearPolyline(x, z, STREAM, 4 + pad)) return false;
+  return true;
+}
 function buildWoods() {
-  const green = [], purple = [];
-  const ok = (x, z) => {
-    if (x > -66 && x < 70 && z > 18 && z < 118) return false;
-    if (x > -135 && x < -60 && z > 30 && z < 118) return false;
-    if (Math.abs(x) < 10 && z > -45 && z < 120) return false;
-    if (dist2(x, z, C.x, C.z) < DOME_R + 8) return false;
-    if (Math.abs(z + 20) < 5 && x > 10 && x < 160) return false;
-    if (dist2(x, z, CAVE_DOOR.x, CAVE_DOOR.z) < 22) return false;
-    return true;
-  };
-  let tries = 0;
-  while ((green.length < 170 || purple.length < 80) && tries++ < 6000) {
-    const x = rand(-195, 195), z = rand(-178, 138); if (!ok(x, z)) continue;
-    const woods = x > 115;
-    const arr = woods ? purple : green; if (arr.length >= (woods ? 80 : 170)) continue;
-    if (arr.some(t => dist2(t.x, t.z, x, z) < 5)) continue;
-    const s = rand(0.8, 1.35); arr.push({ x, z, s }); circC(x, z, 0.7 * s);
+  const round = [], pine = [], birch = [], purple = [], bush1 = [], bush2 = [], grass = [], rocks = [], boulders = [], moss = [], stumps = [], logs = [], logEnds = [], capsR = [], capsB = [], stems = [];
+  const flowers = { 0xff7aa8: [], 0xffe27a: [], 0xffffff: [], 0xc9a8ff: [], 0xff9f5a: [] }, fkeys = Object.keys(flowers);
+  // trees on a jittered grid so the forest is thick but walkable between trunks
+  const S = 5.4;
+  for (let gx = -194; gx <= 194; gx += S) for (let gz = -177; gz <= 137; gz += S) {
+    const x = gx + rand(-1.8, 1.8), z = gz + rand(-1.8, 1.8);
+    if (!forestFree(x, z) || Math.random() < 0.12) continue;
+    const s = rand(0.85, 1.5);
+    if (x > 118) purple.push({ x, z, s });
+    else { const r = Math.random(); (r < 0.52 ? round : r < 0.85 ? pine : birch).push({ x, z, s }); }
+    circC(x, z, 0.55 * s);
+    if (Math.random() < 0.55) (Math.random() < 0.5 ? bush1 : bush2).push(mtx(x + rand(-2.6, 2.6), 0.35, z + rand(-2.6, 2.6), rand(0.7, 1.3), rand(0.55, 0.9), rand(0.7, 1.3)));
+    if (Math.random() < 0.9) grass.push(mtx(x + rand(-2.7, 2.7), 0.25, z + rand(-2.7, 2.7), 0.18, rand(0.4, 0.7), 0.18, rand(0, 3)));
+    if (Math.random() < 0.35) flowers[pick(fkeys)].push(mtx(x + rand(-2.7, 2.7), 0.16, z + rand(-2.7, 2.7), 0.16, 0.12, 0.16));
   }
-  treeInstances(green, 0x6ccf6e, 0x8fe08a, 0x9a6b4f);
-  treeInstances(purple, 0xa98ae6, 0xc6aef5, 0x6b4f7a);
-  disc(150, -20, 50, 0xa4c99a, 0.015);
-  // flowers
-  const fl = { 0xff7aa8: [], 0xffe27a: [], 0xffffff: [], 0xc9a8ff: [] }, keys = Object.keys(fl);
-  for (let i = 0; i < 420; i++) { const x = rand(-190, 190), z = rand(-175, 135); if (dist2(x, z, C.x, C.z) < 52) continue; fl[pick(keys)].push(mtx(x, 0.15, z, 0.18, 0.12, 0.18)); }
-  for (const k of keys) inst(G.sphLo, M(+k), fl[k], false);
+  // trees
+  treeInstances(round, 0x5fbf62, 0x86d97e, 0x8a5e44);
+  treeInstances(purple, 0x9a7bd9, 0xbba2ef, 0x5e4470);
+  const pineM = [], pineM2 = [], pineTrunk = [];
+  for (const t of pine) { pineTrunk.push(mtx(t.x, 1.1 * t.s, t.z, 0.3 * t.s, 2.2 * t.s, 0.3 * t.s)); pineM.push(mtx(t.x, 3.2 * t.s, t.z, 2.0 * t.s, 3.4 * t.s, 2.0 * t.s)); pineM2.push(mtx(t.x, 5.2 * t.s, t.z, 1.4 * t.s, 2.8 * t.s, 1.4 * t.s)); }
+  const cone8 = new THREE.ConeGeometry(1, 1, 8);
+  inst(G.cylLo, M(0x7a5038), pineTrunk); inst(cone8, M(0x3f9f63), pineM); inst(cone8, M(0x4fb571), pineM2);
+  const bT = [], bC = [];
+  for (const t of birch) { bT.push(mtx(t.x, 1.8 * t.s, t.z, 0.24 * t.s, 3.6 * t.s, 0.24 * t.s)); bC.push(mtx(t.x, 4.3 * t.s, t.z, 1.5 * t.s, 1.9 * t.s, 1.5 * t.s)); }
+  inst(G.cylLo, M(0xf1ece2), bT); inst(G.sphLo, M(0xa8de7a), bC);
+  // undergrowth
+  inst(G.sphLo, M(0x56b05a), bush1, false); inst(G.sphLo, M(0x6fc565), bush2, false);
+  inst(G.cone4, M(0x5aa94f), grass, false);
+  // rocks, boulders, stumps, fallen logs, mushrooms scattered through the woods
+  const spot = (pad = 0) => { for (let i = 0; i < 40; i++) { const x = rand(-192, 192), z = rand(-176, 136); if (forestFree(x, z, pad)) return { x, z }; } return null; };
+  for (let i = 0; i < 260; i++) { const p = spot(); if (p) rocks.push(mtx(p.x, 0.25, p.z, rand(0.35, 0.9), rand(0.25, 0.6), rand(0.35, 0.9), rand(0, 3), rand(0, 1))); }
+  for (let i = 0; i < 70; i++) {
+    const p = spot(1); if (!p) continue; const s = rand(1.6, 3.4);
+    boulders.push(mtx(p.x, s * 0.55, p.z, s, s * rand(0.75, 1.05), s * rand(0.85, 1.15), rand(0, 3), rand(0, 0.4)));
+    if (Math.random() < 0.6) moss.push(mtx(p.x, s * 1.05, p.z, s * 0.75, s * 0.25, s * 0.7, rand(0, 3)));
+    circC(p.x, p.z, s * 0.95);
+  }
+  for (let i = 0; i < 70; i++) { const p = spot(); if (!p) continue; const r = rand(0.45, 0.8); stumps.push(mtx(p.x, 0.35, p.z, r, 0.7, r)); circC(p.x, p.z, r); }
+  for (let i = 0; i < 80; i++) {
+    const p = spot(1); if (!p) continue; const L = rand(3, 6.5), r = rand(0.38, 0.6), ry = rand(0, Math.PI);
+    logs.push(mtx(p.x, r, p.z, r, L, r, ry, 0, Math.PI / 2));
+    const dx = Math.cos(ry) * L / 2, dz = -Math.sin(ry) * L / 2;
+    for (const sgn of [-1, 1]) logEnds.push(mtx(p.x + dx * sgn * 1.01, r, p.z + dz * sgn * 1.01, r * 0.92, 0.05, r * 0.92, ry, 0, Math.PI / 2));
+    segC(p.x - dx, p.z - dz, p.x + dx, p.z + dz, true); // low: hop over logs with Space
+  }
+  for (let i = 0; i < 90; i++) {
+    const p = spot(); if (!p) continue; const n = randi(3, 7);
+    for (let j = 0; j < n; j++) {
+      const a = j / n * TAU, rr = rand(0.6, 1.4), x = p.x + Math.cos(a) * rr, z = p.z + Math.sin(a) * rr, s = rand(0.7, 1.3);
+      stems.push(mtx(x, 0.2 * s, z, 0.07 * s, 0.4 * s, 0.07 * s));
+      (Math.random() < 0.6 ? capsR : capsB).push(mtx(x, 0.42 * s, z, 0.26 * s, 0.15 * s, 0.26 * s));
+    }
+  }
+  inst(G.dodec, M(0x9a96a8), rocks); inst(G.dodec, M(0x8e8aa0), boulders); inst(G.sphLo, M(0x6fae5a), moss, false);
+  inst(G.cylLo, M(0x8a5e44), stumps); inst(G.cylLo, M(0x7a5038), logs); inst(G.cylLo, M(0xd9b48a), logEnds, false);
+  inst(G.cylLo, M(0xfff4e0), stems, false); inst(G.sphLo, M(0xff5d6c), capsR, false); inst(G.sphLo, M(0xc9935a), capsB, false);
+  // meadow flowers everywhere outside the city
+  for (let i = 0; i < 900; i++) { const x = rand(-192, 192), z = rand(-176, 136); if (dist2(x, z, C.x, C.z) < 52) continue; flowers[pick(fkeys)].push(mtx(x, 0.15, z, 0.17, 0.12, 0.17)); }
+  // the stream: shallow and walkable
+  for (let i = 0; i < STREAM.length - 1; i++) {
+    const [ax, az] = STREAM[i], [bx, bz] = STREAM[i + 1], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 1.8);
+    for (let j = 0; j < n; j++) { const t = j / n, x = lerp(ax, bx, t), z = lerp(az, bz, t); disc(x, z, rand(2.8, 3.3), 0x8fd3a0, 0.025); disc(x, z, rand(2.1, 2.5), 0x6fc3ee, 0.04); }
+  }
+  disc(-58, 8, 6, 0x8fd3a0, 0.025); disc(-58, 8, 5, 0x6fc3ee, 0.04);
+  W.stream = STREAM;
+  // forest trails and clearings
+  for (const t of FOREST_TRAILS) for (let i = 0; i < t.length - 1; i++) {
+    const [ax, az] = t[i], [bx, bz] = t[i + 1], L = Math.hypot(bx - ax, bz - az);
+    const m = flat((ax + bx) / 2, (az + bz) / 2, 4, L + 3, 0xc9ab7a, 0.045); m.rotation.z = Math.atan2(bx - ax, bz - az);
+  }
+  for (const c of CLEARINGS) {
+    disc(c.x, c.z, c.r + 2, 0xa6dc84, 0.03);
+    for (let i = 0; i < 40; i++) { const a = rand(0, TAU), r = rand(c.r - 2, c.r + 1.5); flowers[pick(fkeys)].push(mtx(c.x + Math.cos(a) * r, 0.16, c.z + Math.sin(a) * r, 0.2, 0.14, 0.2)); }
+    sign(c.x + c.r * 0.55, c.z + c.r * 0.8, 0, [c.name], 1.8);
+    P(scene, G.cyl, 0xf2cf6b, c.x - c.r * 0.5, 0.6, c.z - c.r * 0.4, 0.8, 1.2, 0.8).rotation.z = Math.PI / 2;
+  }
+  for (const k of fkeys) inst(G.sphLo, M(+k), flowers[k], false);
+  disc(150, -20, 50, 0x9cc292, 0.015);
   // Catnap Cavern mountain
   const mt = new THREE.Group(); mt.position.set(CAVE_DOOR.x + 10, 0, CAVE_DOOR.z); scene.add(mt);
   for (let i = 0; i < 14; i++) { const a = rand(-Math.PI, Math.PI); const r = rand(4, 13); const s = rand(5, 10); const rk = P(mt, G.dodec, pick([0x8a7f9e, 0x7a6f8e, 0x9a90ad]), Math.cos(a) * r + 5, s * 0.6, Math.sin(a) * r, s, s * rand(0.8, 1.3), s); rk.rotation.set(rand(0, 3), rand(0, 3), 0); }
@@ -363,6 +443,13 @@ function buildCave() {
   P(scene, G.sph, 0x9b1c4a, cx, 0.8, cz - 22, 7, 1.4, 5); P(scene, G.sph, 0xffcf3d, cx, 1.6, cz - 22, 6.2, 0.4, 4.4);
   for (let i = 0; i < 16; i++) P(scene, G.sph, pick([0xff9fc0, 0x9fd8ff, 0xfff1a8, 0xc9b0ff]), cx + rand(-14, 14), 0.7, cz - rand(20, 30), rand(0.6, 1.1));
   for (let i = 0; i < 8; i++) { const fb = P(scene, G.box, 0xd9d4e8, cx + rand(-20, 20), 0.1, cz + rand(-20, 20), 1.6, 0.1, 0.25); fb.rotation.y = rand(0, 3); }
+  // the Seraph Sheep's cage
+  const cage = new THREE.Group(); cage.position.set(cx + 16, 0, cz - 12); scene.add(cage);
+  P(cage, G.cyl, 0x5a4b78, 0, 0.25, 0, 3.4, 0.5, 3.4); P(cage, G.cyl, M(0xffcf3d, 0x221800), 0, 5.2, 0, 3.4, 0.3, 3.4);
+  P(cage, G.cone, M(0xffcf3d, 0x221800), 0, 6.2, 0, 3.6, 1.8, 3.6);
+  const bars = new THREE.Group(); cage.add(bars);
+  for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; P(bars, G.cylLo, 0xffd23f, Math.cos(a) * 3.2, 2.7, Math.sin(a) * 3.2, 0.1, 5, 0.1); }
+  W.cageBars = bars; W.cage = cage; circC(cage.position.x, cage.position.z, 3.6);
   // exit portal
   const portal = new THREE.Mesh(G.torus, MB(0x7fe8ff)); portal.position.set(cx, 2.5, cz + 20); portal.scale.setScalar(2.4); scene.add(portal); W.portal = portal;
   const pf = new THREE.Mesh(G.circle, new THREE.MeshBasicMaterial({ color: 0xbff4ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide })); pf.position.copy(portal.position); pf.scale.setScalar(2.3); scene.add(pf);

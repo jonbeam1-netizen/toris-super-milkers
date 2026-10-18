@@ -34,7 +34,7 @@ function makeCow(type) {
     if (T.seeds) { P(g, G.sphLo, 0xfff27a, px, py, pz, 0.07, 0.1, 0.07); continue; }
     if (T.stars) { const s = P(g, G.oct, M(T.spot, 0x5a5020), px, py, pz, 0.16); s.rotation.set(rand(0, 3), rand(0, 3), 0); continue; }
     if (T.berries) { for (let j = 0; j < 3; j++) P(g, G.sphLo, T.spot, px + rand(-.12, .12), py + rand(-.1, .1), pz + rand(-.12, .12), 0.13); continue; }
-    const col = T.spot2 && i % 2 ? T.spot2 : T.spot;
+    const col = T.rainbow ? [0xff7ad9, 0xffe27a, 0x7fe8ff, 0xa8f0c6, 0xc9a8ff][i % 5] : T.spot2 && i % 2 ? T.spot2 : T.spot;
     const r = T.chips ? rand(0.1, 0.17) : rand(0.28, 0.42);
     P(g, G.sphLo, col, px * 0.97, py, pz * 0.97, r, r * 0.8, r);
   }
@@ -145,7 +145,8 @@ function makeFolk(o) {
   P(g, G.robe, robeM, 0, 0.85, 0, 1, 1, 1);
   P(g, G.cyl, trimM, 0, 0.12, 0, 0.87, 0.12, 0.87);
   P(g, G.cyl, trimM, 0, 1.25, 0, 0.62, 0.1, 0.62);
-  for (const s of [-1, 1]) { P(g, G.sph, robeM, s * 0.62, 1.3, 0.05, 0.2, 0.36, 0.2); P(g, G.sph, faceM, s * 0.66, 0.95, 0.12, 0.13); }
+  const arms = [];
+  for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.62, 1.5, 0.05); g.add(a); P(a, G.sph, robeM, 0, -0.2, 0, 0.2, 0.36, 0.2); P(a, G.sph, faceM, s * 0.04, -0.55, 0.07, 0.13); a.userData.side = s; arms.push(a); }
   const head = new THREE.Group(); head.position.set(0, 2.05, 0); g.add(head);
   if (o.species === 'cow') {
     P(head, G.sph, faceM, 0, 0, 0, 0.46, 0.42, 0.46);
@@ -168,7 +169,7 @@ function makeFolk(o) {
     case 'scarf': P(head, G.sph, 0xff9fc0, 0, 0.22, -0.1, 0.5, 0.32, 0.48); break;
   }
   g.userData.talkY = 3.2;
-  return { g, head };
+  return { g, head, arms };
 }
 
 /* ---------- Humans: Tori and the farmers of Buttercup Hollow ---------- */
