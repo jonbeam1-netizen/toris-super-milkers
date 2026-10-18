@@ -40,7 +40,9 @@ function addXP(n) {
   n = Math.round(n * (hasBuff('xp') ? 2 : 1)); state.xp += n; let need;
   while (state.xp >= (need = xpNeed(state.level))) {
     state.xp -= need; state.level++; state.hearts = maxHearts();
-    toast(`Level up! Tori is now level ${state.level}. New animals may be in stock.`, 'good'); sfx('level'); burst('sparkle', px(), 2.5, pz(), 22);
+    const newCows = Object.values(COWS).filter(c => c.lvl === state.level).map(c => c.name), newSheep = Object.values(BREEDS).filter(b => b.lvl === state.level).map(b => b.name);
+    toast(`Level up! Tori is now level ${state.level}.`, 'good'); sfx('level'); burst('sparkle', px(), 2.5, pz(), 22);
+    if (newCows.length || newSheep.length) toast(`Unlocked at the Moo Market: ${newCows.concat(newSheep).join(', ')}!`, 'love');
   }
 }
 function turnTo(cur, target, k) { return cur + wrapA(target - cur) * k; }
@@ -52,7 +54,7 @@ function newState() {
     v: 1, coins: 40, xp: 0, level: 1, hearts: 5,
     inv: { milk: {}, wool: [0, 0, 0, 0, 0, 0], yarn: [0, 0, 0, 0, 0, 0], hay: 4, clover: 2, goods: {} },
     upg: Object.fromEntries(Object.keys(UPG).map(k => [k, 0])),
-    cows: [{ type: 'classic' }, { type: 'choc' }, { type: 'choc' }, { type: 'straw' }, { type: 'banana' }],
+    cows: [{ type: 'classic' }, { type: 'classic' }],
     sheep: [{ breed: 'meadow', fleece: 1 }, { breed: 'meadow', fleece: 1 }, { breed: 'mud' }, { breed: 'cloud' }],
     field: { power: 70 }, spindle: { queue: [], prog: 0, basket: [0, 0, 0, 0, 0, 0], momentum: 60 },
     faith: 0, day: 1, t: 8, wave: 0, quest: { i: 0, phase: 'offer', base: 0 }, stats: {}, bounties: [],
@@ -412,10 +414,10 @@ function acceptQuest() {
 function turnInQuest() {
   const q = curQuest(), key = q.turnin || q.giver;
   if (q.kind === 'item') { if (q.item.type === 'milk') state.inv.milk[q.item.key] -= q.n; else state.inv.wool[q.item.tier] -= q.n; }
-  const r = q.reward; if (r.coins) state.coins += r.coins; if (r.hay) state.inv.hay += r.hay; if (r.clover) state.inv.clover += r.clover; if (r.faith) state.faith += r.faith;
+  const r = q.reward; if (r.cow) { const e = addCow(r.cow, { x: -10, z: 80 }); toast(`${e.d.name} the ${COWS[r.cow].name} joined your farm!`, 'love'); } if (r.coins) state.coins += r.coins; if (r.hay) state.inv.hay += r.hay; if (r.clover) state.inv.clover += r.clover; if (r.faith) state.faith += r.faith;
   addXP(r.xp || 0); sfx('level');
   state.quest.i++; state.quest.phase = 'offer'; state.quest.base = 0;
-  const rewardLine = `(Reward: ${[r.coins && r.coins + ' coins', r.hay && r.hay + ' hay', r.clover && r.clover + ' clover', r.faith && r.faith + ' faith', r.xp && r.xp + ' XP'].filter(Boolean).join(', ')})`;
+  const rewardLine = `(Reward: ${[r.cow && 'a ' + COWS[r.cow].name, r.coins && r.coins + ' coins', r.hay && r.hay + ' hay', r.clover && r.clover + ' clover', r.faith && r.faith + ' faith', r.xp && r.xp + ' XP'].filter(Boolean).join(', ')})`;
   const nq = curQuest();
   const next = nq && nq.giver === key ? [{ label: 'What\'s next?', fn: () => dialog(key, nq.talk, [{ label: 'Accept quest', fn: acceptQuest }, { label: 'Not yet', cls: 'ghost' }]) }] : null;
   if (!nq) { toast("Main story complete! You're the Hero of the Sheep-a-verse.", 'good'); burst('rainbow', px(), 3, pz(), 60); }
@@ -602,10 +604,26 @@ function explode(p, R) {
   }
 }
 
+/* Kittens sneak in from just past the bottom, left or right edge of the screen, never from the castle side */
+function edgeSpawn() {
+  const side = pick(['left', 'right', 'bottom']), zz = zoom;
+  let x, z;
+  if (player.inCave) { // Tori is underground: use the edges of the overworld instead
+    if (side === 'left') { x = -188; z = rand(-40, 120); } else if (side === 'right') { x = 188; z = rand(-40, 120); } else { x = rand(-150, 150); z = 136; }
+  } else {
+    const ox = px(), oz = pz();
+    if (side === 'left') { x = ox - rand(28, 34) * zz; z = oz + rand(-12, 18) * zz; }
+    else if (side === 'right') { x = ox + rand(28, 34) * zz; z = oz + rand(-12, 18) * zz; }
+    else { x = ox + rand(-24, 24) * zz; z = oz + rand(22, 28) * zz; }
+  }
+  const dx = x - C.x, dz = z - C.z, d = Math.hypot(dx, dz) || 1;
+  if (d < DOME_R + 8) { x = C.x + dx / d * (DOME_R + 10); z = C.z + dz / d * (DOME_R + 10); }
+  return { x: clamp(x, -192, 192), z: clamp(z, -176, 137) };
+}
 function spawnKitten(type, goal, at) {
   const m = makeKitten(type), K = KITTENS[type];
   let x, z;
-  if (at) { x = at.x; z = at.z; } else if (goal === 'farm') { x = 182; z = rand(30, 100); } else { x = 182; z = rand(-150, 60); }
+  if (at) { x = at.x; z = at.z; } else ({ x, z } = edgeSpawn());
   m.g.position.set(x, 0, z); scene.add(m.g);
   const fxm = new THREE.Mesh(G.sphLo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })); fxm.position.y = 0.6; fxm.scale.set(0.9, 0.7, 1.1); fxm.visible = false; m.g.add(fxm);
   const k = { m, g: m.g, type, def: K, hp: K.hp * (1 + Math.max(0, state.wave - 4) * 0.08), max: 0, goal, state: 'move', cd: rand(0, 1), t: 0, seed: rand(0, 10), kbx: 0, kbz: 0, stun: 0, root: 0, slow: 0, flash: 0, face: -Math.PI / 2, tgt: null, harass: 0, summonT: 8, fxm, cave: false };
@@ -625,7 +643,7 @@ function waveList(n) {
 }
 function startRaid() {
   state.wave++; raid = { active: true, timer: 0, queue: waveList(state.wave), breachedThisRaid: false };
-  toast(`Night ${state.day}: a kitten raid is coming from Whisker Woods in the east!`, 'bad'); sfx('alarm');
+  toast(`Night ${state.day}: evil kittens are sneaking in! Grab a cow and protect the shield.`, 'bad'); sfx('alarm');
 }
 function endRaid() {
   if (!raid.active) return; raid.active = false;
@@ -673,11 +691,11 @@ function updateKittens(dt) {
     if (k.state === 'sleepy') { k.st += dt; p.y += dt * 1.4; k.g.rotation.y += dt * 2; k.g.scale.setScalar(k.def.scale * Math.max(0.01, 1 - k.st / 2.2)); if (Math.random() < dt * 4) burst('zzz', p.x, p.y + k.def.scale, p.z, 1); if (k.st > 2.2) { scene.remove(k.g); kittens.splice(i, 1); } continue; }
     if (k.state === 'charmed' || k.state === 'flee') {
       k.st = (k.st || 0) + dt; const sp = k.def.speed * 1.3;
-      const tx = k.cave ? CAVE.x : 200, tz = k.cave ? CAVE.z - 40 : p.z;
+      const tx = k.cave ? CAVE.x : p.x, tz = k.cave ? CAVE.z - 40 : 160;
       const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz) || 1; p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; k.face = Math.atan2(dx, dz);
       p.y = Math.abs(Math.sin(k.t * 12)) * 0.4; k.g.rotation.y = turnTo(k.g.rotation.y, k.face, 0.2);
       if (k.state === 'charmed' && Math.random() < dt * 3) burst('heart', p.x, 1.6, p.z, 1);
-      if (p.x > 192 || (k.cave && k.st > 3) || k.st > 25) { scene.remove(k.g); kittens.splice(i, 1); }
+      if (p.z > 145 || (k.cave && k.st > 3) || k.st > 14) { scene.remove(k.g); kittens.splice(i, 1); }
       continue;
     }
     k.stun -= dt; k.root -= dt; k.slow -= dt;

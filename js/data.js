@@ -50,17 +50,17 @@ const SUPER_CHARGES = 45; // seconds of rainbow stream
 
 const COWS = {
   classic: { name: 'Classic Cow', milk: 'classic', body: 0xfafaf5, spot: 0x2d2a32, snout: 0xffb3c1, price: 60, lvl: 1, cd: 26 },
-  choc:    { name: 'Chocolate Cow', milk: 'choc', body: 0x9b6640, spot: 0x5a3520, snout: 0xf2a6a0, price: 120, lvl: 1, cd: 28 },
-  straw:   { name: 'Strawberry Cow', milk: 'straw', body: 0xffbfd3, spot: 0xff5f8f, snout: 0xfff0f4, price: 180, lvl: 1, cd: 30, seeds: true, leaf: true },
-  banana:  { name: 'Banana Cow', milk: 'banana', body: 0xffe37a, spot: 0x7a5a24, snout: 0xffc9a8, price: 240, lvl: 2, cd: 32, stem: true },
-  blueberry: { name: 'Blueberry Cow', milk: 'blueberry', body: 0x8f9cff, spot: 0x4b3fa8, snout: 0xd9d4ff, price: 220, lvl: 2, cd: 31, berries: true, leaf: true },
-  orange:  { name: 'Orange Cow', milk: 'orange', body: 0xffa94d, spot: 0xffe0b8, snout: 0xffd2b0, price: 280, lvl: 3, cd: 32, leaf: true },
+  choc:    { name: 'Chocolate Cow', milk: 'choc', body: 0x9b6640, spot: 0x5a3520, snout: 0xf2a6a0, price: 120, lvl: 2, cd: 28 },
+  straw:   { name: 'Strawberry Cow', milk: 'straw', body: 0xffbfd3, spot: 0xff5f8f, snout: 0xfff0f4, price: 180, lvl: 2, cd: 30, seeds: true, leaf: true },
+  banana:  { name: 'Banana Cow', milk: 'banana', body: 0xffe37a, spot: 0x7a5a24, snout: 0xffc9a8, price: 240, lvl: 3, cd: 32, stem: true },
+  blueberry: { name: 'Blueberry Cow', milk: 'blueberry', body: 0x8f9cff, spot: 0x4b3fa8, snout: 0xd9d4ff, price: 220, lvl: 3, cd: 31, berries: true, leaf: true },
+  orange:  { name: 'Orange Cow', milk: 'orange', body: 0xffa94d, spot: 0xffe0b8, snout: 0xffd2b0, price: 280, lvl: 4, cd: 32, leaf: true },
   almond:  { name: 'Almond Cow', milk: 'almond', body: 0xe3c398, spot: 0x8a5a33, snout: 0xf5d9c2, price: 360, lvl: 4, cd: 35 },
-  mochi:   { name: 'Mochi Cow', milk: 'mochi', body: 0xfff2f6, spot: 0xffb3cc, spot2: 0xbfe3a6, snout: 0xffd6e2, price: 320, lvl: 3, cd: 34, round: true },
-  mint:    { name: 'Mint Chip Cow', milk: 'mint', body: 0xb8f5dc, spot: 0x4a3326, snout: 0xffc1cc, price: 400, lvl: 4, cd: 36, chips: true },
-  cookie:  { name: 'Cookies & Cream Cow', milk: 'cookie', body: 0xf3efe8, spot: 0x3b302c, snout: 0xffc1cc, price: 500, lvl: 5, cd: 38, chips: true },
-  moon:    { name: 'Moon Cow', milk: 'moon', body: 0x6d7fe0, spot: 0xfff2a8, snout: 0xc9b8ff, price: 750, lvl: 6, cd: 42, glow: 0x141a48, stars: true },
-  gold:    { name: 'Golden Cow', milk: 'gold', body: 0xffd23f, spot: 0xfff1b0, snout: 0xffb38a, price: 1000, lvl: 6, cd: 50, glow: 0x4a3500 },
+  mochi:   { name: 'Mochi Cow', milk: 'mochi', body: 0xfff2f6, spot: 0xffb3cc, spot2: 0xbfe3a6, snout: 0xffd6e2, price: 320, lvl: 5, cd: 34, round: true },
+  mint:    { name: 'Mint Chip Cow', milk: 'mint', body: 0xb8f5dc, spot: 0x4a3326, snout: 0xffc1cc, price: 400, lvl: 5, cd: 36, chips: true },
+  cookie:  { name: 'Cookies & Cream Cow', milk: 'cookie', body: 0xf3efe8, spot: 0x3b302c, snout: 0xffc1cc, price: 500, lvl: 6, cd: 38, chips: true },
+  moon:    { name: 'Moon Cow', milk: 'moon', body: 0x6d7fe0, spot: 0xfff2a8, snout: 0xc9b8ff, price: 750, lvl: 7, cd: 42, glow: 0x141a48, stars: true },
+  gold:    { name: 'Golden Cow', milk: 'gold', body: 0xffd23f, spot: 0xfff1b0, snout: 0xffb38a, price: 1000, lvl: 8, cd: 50, glow: 0x4a3500 },
 };
 
 const BREEDS = {
@@ -137,6 +137,7 @@ const NPC_DEF = {
   granny: { name: 'Granny Clover', role: 'Moo Meadow Farm', x: -7, z: 95, species: 'cow', robe: 0x8fd07a, trim: 0xfff1c1, hat: 'bonnet', face: 0xfaf3e8,
     chatter: ["Happy cows make extra milk. Feed them hay and give them pets!",
       "Pick up a cow with C and squeeze! Every milk does something different to kittens.",
+      "Every time you level up, the Moo Market gets fancier cows. Save up for a golden one!",
       "Chocolate cows make chocolate milk. Strawberry cows make strawberry milk. I don't ask questions, dear.",
       "The Creamery by the sheep meadow can mix milks into treats. And maybe something more..."] },
   bo: { name: 'Shepherd Bo', role: 'Sheep Meadow', x: 17, z: 46, species: 'sheep', robe: 0x6aa9ff, trim: 0xffffff, hat: 'cap', face: 0x3a3a44,
@@ -249,11 +250,11 @@ const FARMERS = {
 
 /* ---------- Main story quests ---------- */
 const QUESTS = [
-  { giver: 'granny', title: 'Welcome to Moo Meadow', text: 'Milk 3 cows', kind: 'stat', stat: 'milked', n: 3, reward: { coins: 40, xp: 25 },
-    talk: ["Oh! You must be Tori, my new farmhand. Welcome to Tori's Super Milkers! Well, it's your farm now, dear.",
-      "These are your cows. Brown ones are chocolate cows and make chocolate milk. Pink ones make strawberry milk, yellow ones make banana milk.",
-      "Walk up to a cow and press E to milk her. Milk three for me."],
-    finish: ["Lovely! Fresh milk smells like sunshine. Here's a little something."] },
+  { giver: 'granny', title: 'Welcome to Moo Meadow', text: 'Milk 3 cows', kind: 'stat', stat: 'milked', n: 3, reward: { coins: 40, xp: 25, cow: 'choc' },
+    talk: ["Oh! You must be Tori. Welcome to Tori's Super Milkers! It's your farm now, dear.",
+      "You're starting small: two good old classic cows. But there are fancier cows out there. Chocolate, strawberry, banana, mochi, even golden!",
+      "Walk up to a cow and press E to milk her. Milk three times for me, and I'll give you a special surprise."],
+    finish: ["Lovely! Fresh milk smells like sunshine.", "Here's your surprise: a CHOCOLATE COW! Chocolate cows make chocolate milk. She's waiting in your pasture.", "Level up and Moolissa's Moo Market in the Sheep-a-verse will sell you even fancier cows."] },
   { giver: 'granny', title: 'Sweet Discovery', text: 'Bring Granny 3 Chocolate Milk', kind: 'item', item: { type: 'milk', key: 'choc' }, n: 3, reward: { coins: 60, xp: 30, hay: 5 },
     talk: ["Now for the good stuff. Bring me 3 bottles of chocolate milk.", "A cow gives more milk when she's happy. Hay and pets help!"],
     finish: ["Mmm! Just like I remember. Take some hay, dear."] },
@@ -273,7 +274,7 @@ const QUESTS = [
     talk: ["Yarn from the Spindle goes to the Heart of the Shield in the middle of the plaza.", "Captain Fleecewell guards it. Weave 3 yarn into the field and the city stays safe."],
     finish: ["The field glows brighter! Good work, farmer.", "Whiter yarn gives the field more power. Remember that."] },
   { giver: 'fleecewell', title: 'Kitten Patrol', text: 'Bonk 6 evil kittens', kind: 'stat', stat: 'kittens', n: 6, reward: { coins: 120, xp: 80 },
-    talk: ["Every night the evil kittens leave Whisker Woods to the east and scratch at our shield.",
+    talk: ["Every night the evil kittens sneak out of the wilds and scratch at our shield.",
       "Best trick in the Sheep-a-verse: pick up a cow (C) and squeeze her udder at them (F or click). Every kind of milk does something different!",
       "Strawberry charms them, banana makes them slip, mochi glues them, mint freezes them. Experiment!",
       "Bonk 6 kittens for me."],
