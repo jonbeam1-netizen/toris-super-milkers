@@ -481,23 +481,27 @@ function shoot() {
   const ox = px() + Math.sin(ang) * 1.7, oz = pz() + Math.cos(ang) * 1.7, oy = 1.3;
   const angs = spec.fx === 'spread' ? [ang - 0.22, ang, ang + 0.22] : [ang];
   const dmgScale = STREAM_DT / spec.cd * (hasBuff('zest') ? 2 : 1);
-  for (const a2 of angs) spawnProj(ox, oy, oz, a2 + rand(-0.025, 0.025), t, sh, dmgScale);
+  angs.forEach((a2, li) => spawnProj(ox, oy, oz, a2 + rand(-0.01, 0.01), t, sh, dmgScale, li));
   if (isSuper) { cow.d.super = Math.max(0, cow.d.super - STREAM_DT); if (cow.d.super <= 0) { cow.d.super = 0; toast(`${cow.d.name}'s rainbow milk ran out.`, 'bad'); } }
   else cow.udder = Math.max(0, cow.udder - STREAM_DT);
   cow.udderIdle = 0; cow.squash = 0.12;
   sfx('squirt');
   if (Math.random() < 0.01) sfx('moo');
 }
-function spawnProj(x, y, z, ang, target, sh, dmgScale) {
+function spawnProj(x, y, z, ang, target, sh, dmgScale, lane = 0) {
   const spec = sh.spec, isSuper = sh.key === 'super';
   const size = spec.fx === 'heavy' ? 0.42 : spec.fx === 'boom' ? 0.38 : spec.fx === 'zest' ? 0.24 : isSuper ? 0.4 : 0.3;
   const mat = isSuper ? new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL((elapsed * 1.5) % 1, 0.9, 0.65) }) : MB(sh.color);
-  const m = new THREE.Mesh(G.sphLo, mat); m.scale.set(size * 0.55, size * 0.55, size * 3.4); m.position.set(x, y, z); scene.add(m);
-  if (Math.random() < 0.5) spawnPart(PTEX.dot, isSuper ? mat.color : sh.color, x, y, z, Math.sin(ang) * rand(3, 7) + rand(-1, 1), rand(0.5, 2), Math.cos(ang) * rand(3, 7) + rand(-1, 1), rand(0.12, 0.25), rand(0.12, 0.2), 10);
+  const m = new THREE.Mesh(G.sphLo, mat); m.scale.set(size * 0.28, size * 0.28, size * 3.8); m.position.set(x, y, z); scene.add(m);
+  if (Math.random() < 0.5) spawnPart(PTEX.dot, isSuper ? mat.color : sh.color, x, y, z, Math.sin(ang) * rand(3, 7) + rand(-1, 1), rand(0.5, 2), Math.cos(ang) * rand(3, 7) + rand(-1, 1), rand(0.12, 0.25), rand(0.07, 0.12), 10);
   const sp = spec.fx === 'heavy' ? 22 : spec.fx === 'zest' ? 32 : 27;
   let vy = 2.2;
   if (target) { const d = dist2(x, z, target.g.position.x, target.g.position.z); vy = clamp(d * 0.11, 0.5, 4) + (target.def.scale - 1) * 1.2; }
-  projs.push({ m, vx: Math.sin(ang) * sp, vy, vz: Math.cos(ang) * sp, life: 1.1, spec, key: sh.key, color: sh.color, hit: new Set(), bounces: spec.fx === 'bounce' ? 1 : 0, isSuper, mat, dmgScale: dmgScale || 1 });
+  const link = new THREE.Mesh(G.sphLo, mat); link.visible = false; scene.add(link);
+  const q = { m, link, w: size * 0.28, lane, born: elapsed, newer: null, dead: false, vx: Math.sin(ang) * sp, vy, vz: Math.cos(ang) * sp, life: 1.1, spec, key: sh.key, color: sh.color, hit: new Set(), bounces: spec.fx === 'bounce' ? 1 : 0, isSuper, mat, dmgScale: dmgScale || 1 };
+  const lp = player.lastProjs || (player.lastProjs = []), prev = lp[lane];
+  if (prev && !prev.dead && elapsed - prev.born < 0.15) prev.newer = q;
+  lp[lane] = q; projs.push(q);
 }
 function shotDamage(p, k) {
   let d = p.spec.dmg * (p.dmgScale || 1) * UPG.splash.vals[state.upg.splash] * (hasBuff('strong') ? 2 : 1);
@@ -547,7 +551,7 @@ function updateProjs(dt) {
     p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
     _dir.set(p.m.position.x + p.vx, p.m.position.y + p.vy, p.m.position.z + p.vz); p.m.lookAt(_dir);
     if (Math.random() < 0.45) spawnPart(PTEX.dot, p.isSuper ? p.mat.color : p.color, p.m.position.x + rand(-0.07, 0.07), p.m.position.y + rand(-0.07, 0.07), p.m.position.z + rand(-0.07, 0.07),
-      p.vx * 0.12 + rand(-0.4, 0.4), p.vy * 0.12 + rand(-0.2, 0.5), p.vz * 0.12 + rand(-0.4, 0.4), rand(0.18, 0.34), rand(0.13, 0.24), 9);
+      p.vx * 0.12 + rand(-0.4, 0.4), p.vy * 0.12 + rand(-0.2, 0.5), p.vz * 0.12 + rand(-0.4, 0.4), rand(0.18, 0.34), rand(0.07, 0.13), 9);
     if ((p.isSuper || p.spec.fx === 'boom') && Math.random() < 0.15) burst(p.isSuper ? 'rainbow' : 'sparkle', p.m.position.x, p.m.position.y, p.m.position.z, 1, p.color);
     let remove = false;
     for (const k of kittens) {
@@ -558,6 +562,7 @@ function updateProjs(dt) {
         p.hit.add(k); const sp = Math.hypot(p.vx, p.vz) || 1;
         if (p.spec.fx === 'boom' || p.isSuper) explode(p, p.isSuper ? 2.2 : 3.2);
         else hitKitten(k, p, p.vx / sp, p.vz / sp);
+        if (Math.random() < 0.35) addPuddle(kp.x + rand(-0.6, 0.6), kp.z + rand(-0.6, 0.6), p);
         if (p.spec.fx === 'homing' || p.isSuper) continue;
         if (p.bounces > 0) {
           p.bounces--; let nx = null, nd = 12;
@@ -567,8 +572,23 @@ function updateProjs(dt) {
         remove = true; break;
       }
     }
-    if (!remove && p.m.position.y < 0.05) { burst('milk', p.m.position.x, 0.1, p.m.position.z, 4, p.color); if (p.spec.fx === 'boom') explode(p, 3); remove = true; }
-    if (remove || p.life <= 0) { scene.remove(p.m); if (p.isSuper) p.mat.dispose(); projs.splice(i, 1); }
+    if (!remove && p.m.position.y < 0.05) { burst('milk', p.m.position.x, 0.1, p.m.position.z, 2, p.color); addPuddle(p.m.position.x, p.m.position.z, p); if (p.spec.fx === 'boom') explode(p, 3); remove = true; }
+    if (remove || p.life <= 0) { p.dead = true; scene.remove(p.m); scene.remove(p.link); if (p.isSuper) p.mat.dispose(); projs.splice(i, 1); }
+  }
+}
+const _nz = new THREE.Vector3();
+function linkStream() {
+  const cw = player.carrying;
+  if (cw) _nz.set(px() + Math.sin(player.face) * 1.7, 1.3, pz() + Math.cos(player.face) * 1.7);
+  for (let i = 0; i < projs.length; i++) {
+    const p = projs[i]; let nb = null;
+    if (p.newer && !p.newer.dead) nb = p.newer.m.position;
+    else if (!p.newer && cw && shootHeld && player.lastProjs && player.lastProjs[p.lane] === p && elapsed - p.born < 0.1) nb = _nz;
+    if (!nb) { p.link.visible = false; continue; }
+    const a = p.m.position, d = a.distanceTo(nb);
+    if (d > 3.4 || d < 0.01) { p.link.visible = false; continue; }
+    const w = p.w * (1 + 0.18 * Math.sin(elapsed * 34 + i * 1.7));
+    p.link.visible = true; p.link.position.copy(a).add(nb).multiplyScalar(0.5); p.link.lookAt(nb); p.link.scale.set(w, w, d / 2 + w * 0.6);
   }
 }
 function explode(p, R) {
@@ -706,6 +726,37 @@ function updateKittens(dt) {
     if (scratching) k.m.head.rotation.x = Math.sin(k.t * 16) * 0.15;
     k.m.body.scale.setScalar(k.flash > 0 ? 1.12 : 1);
     if (k.def.boss) showBoss(k.def.name, k.hp / k.max);
+  }
+}
+
+/* ---------- Milk puddles: every squirt leaves a mess ---------- */
+const puddles = [], _pmats = {};
+const RAINBOW = [0xff7ad9, 0xffe27a, 0x7fe8ff, 0xa8f0c6, 0xc9a8ff];
+function puddleMat(c) { return _pmats[c] || (_pmats[c] = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.88, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); }
+function addPuddle(x, z, p) {
+  const key = p.key, color = p.isSuper ? pick(RAINBOW) : p.color;
+  for (const q of puddles) if (q.key === key && Math.abs(q.x - x) < 1 && Math.abs(q.z - z) < 1) { q.r = Math.min(2.6, q.r + 0.05); q.t = Math.min(q.t, 4); q.m.scale.set(q.r * q.sx, q.r * q.sz, 1); return; }
+  const m = new THREE.Mesh(G.circle, puddleMat(color));
+  m.rotation.x = -Math.PI / 2; m.rotation.z = rand(0, TAU); m.renderOrder = 1;
+  m.position.set(x, 0.14 + (puddles.length % 12) * 0.004, z);
+  for (let j = 0; j < 3; j++) { const d = new THREE.Mesh(G.circle, m.material); const a = rand(0, TAU), r = rand(0.9, 1.4); d.position.set(Math.cos(a) * r, Math.sin(a) * r, 0.001); d.scale.setScalar(rand(0.18, 0.38)); m.add(d); }
+  const q = { m, x, z, key, r: rand(0.35, 0.55), sx: rand(0.8, 1.2), sz: rand(0.8, 1.2), t: 0 };
+  m.scale.set(q.r * q.sx, q.r * q.sz, 1); scene.add(m); puddles.push(q);
+  if (puddles.length > 140) { const o = puddles.shift(); scene.remove(o.m); }
+}
+function updatePuddles(dt) {
+  for (let i = puddles.length - 1; i >= 0; i--) {
+    const q = puddles[i]; q.t += dt;
+    if (q.t > 26) { const k = Math.max(0, 1 - (q.t - 26) / 4); q.m.scale.set(q.r * q.sx * k, q.r * q.sz * k, 1); if (k <= 0) { scene.remove(q.m); puddles.splice(i, 1); continue; } }
+    if (q.key !== 'banana' && q.key !== 'mochi') continue;
+    for (const k of kittens) {
+      if (k.state !== 'move' || k.def.boss) continue;
+      const dx = k.g.position.x - q.x, dz = k.g.position.z - q.z, rr = q.r * 1.1;
+      if (dx * dx + dz * dz < rr * rr) {
+        if (q.key === 'banana' && (k.slipCd || 0) <= elapsed) { k.stun = Math.max(k.stun, 1.1); k.slipCd = elapsed + 2.5; floatText(k.g.position.x, 2, k.g.position.z, 'Whoops!', 'hit', 0.8); }
+        if (q.key === 'mochi') k.root = Math.max(k.root, 0.4);
+      }
+    }
   }
 }
 
@@ -1014,7 +1065,7 @@ const camTarget = new THREE.Vector3();
 function update(dt) {
   updateTime(dt); updatePlayer(dt); updateCows(dt); updateSheep(dt); updateTownsfolk(dt); updateWorld(dt);
   if (shootHeld) shoot();
-  updateKittens(dt); updateProjs(dt); updateCaveFx(dt);
+  updateKittens(dt); updateProjs(dt); linkStream(); updatePuddles(dt); updateCaveFx(dt);
   autosaveT += dt; if (autosaveT > 25) { autosaveT = 0; saveGame(true); }
 }
 function frame(now) {
