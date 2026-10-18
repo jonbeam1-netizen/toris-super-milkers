@@ -71,6 +71,7 @@ function joinFarm(w) {
   const list = w.species === 'cow' ? state.cows : state.sheep;
   if (list.length >= animalCap()) { if (w.warnT <= 0) { w.warnT = 6; toast(`Your ${w.species === 'cow' ? 'pasture' : 'meadow'} is full! Upgrade "Barn & Meadow" at the Moo Market.`, 'bad'); } return; }
   const x = w.g.position.x, z = w.g.position.z, isNew = w.species === 'cow' ? !state.found.cows[w.type] : !state.found.sheep[w.type];
+  if (w.type === 'seraph') setTimeout(() => toast('The Seraph Sheep is home! Its holy fleece wraps the city in a golden shield: +100 max power, and it barely needs any yarn now.', 'good'), 1500);
   if (w.species === 'cow') { const d = { type: w.type, x, z }; state.cows.push(d); normCow(d); spawnCowEnt(d); state.found.cows[w.type] = 1; }
   else { const d = { breed: w.type, x, z, fleece: 0.6 }; state.sheep.push(d); normSheep(d); spawnSheepEnt(d); state.found.sheep[w.type] = 1; }
   state.wild[w.id] = true; scene.remove(w.g); wilds.splice(wilds.indexOf(w), 1); followers.splice(followers.indexOf(w), 1);
@@ -128,13 +129,13 @@ function spawnRoamer(farFromPlayer) {
     if (farFromPlayer && dist2(x, z, px(), pz()) < 45) continue;
     if (state.quest.i < 5 && dist2(x, z, 0, 40) < 110) continue; // keep the starter woods calm until Bo teaches squirting
     const far = dist2(x, z, 0, 60);
-    const type = far < 110 ? pick(['tabby', 'tabby', 'ginger']) : far < 170 ? pick(['tabby', 'ginger', 'chonk', 'shadow']) : pick(['chonk', 'shadow', 'siamese', 'ginger']);
+    const type = kittenType(threat() + (far > 110 ? 6 : 0) + (far > 170 ? 8 : 0));
     return spawnForestKitten(type, x, z, false);
   }
 }
 function updateForestKittens(dt) {
   roamT -= dt;
-  if (roamT <= 0) { roamT = 14; if (kittens.filter(k => k.roamer && k.state === 'move').length < 24) spawnRoamer(true); }
+  if (roamT <= 0) { roamT = 14; if (kittens.filter(k => k.roamer && k.state === 'move').length < 20 + state.quest.i + (state.flags.endless ? 20 : 0)) spawnRoamer(true); }
 }
 /* called from updateKittens for goal === 'guard'; returns [tx, tz, arrive, speedMul] */
 function guardBrain(k, dt, dp) {
@@ -191,10 +192,10 @@ function updateFusion(dt) {
 /* ---------- Endless raids after King Clawdius falls ---------- */
 function updateEndless(dt) {
   const f = state.flags;
-  if (f.endlessT > 0) { f.endlessT -= dt; if (f.endlessT <= 0) { f.endless = true; f.nextWaveT = 3; toast('ENDLESS RAIDS! Every kitten in the land wants revenge. How many waves can you survive?', 'bad'); sfx('alarm'); } }
+  if (f.endlessT > 0) { f.endlessT -= dt; if (f.endlessT <= 0) { f.endless = true; f.nextWaveT = 3; toast('ENDLESS HORDES! Every kitten in the land wants revenge. How many waves can you survive?', 'bad'); sfx('alarm'); } }
   if (!f.endless) return;
   if (raid.active) {
     const alive = raid.queue.length + kittens.filter(k => !k.cave && !k.guard && !k.roamer && k.state === 'move').length;
-    if (!alive) { raid.active = false; f.nextWaveT = 12; const bonus = 25 + state.wave * 10; state.coins += bonus; state.stats.bestWave = Math.max(state.stats.bestWave || 0, state.wave); toast(`Wave ${state.wave} cleared! +${bonus} coins. Next wave in 12 seconds...`, 'good'); }
+    if (!alive) { raid.active = false; f.nextWaveT = 10; const bonus = 25 + state.wave * 10; state.coins += bonus; state.stats.bestWave = Math.max(state.stats.bestWave || 0, state.wave); toast(`Wave ${state.wave} cleared! +${bonus} coins. Next wave in 10 seconds...`, 'good'); }
   } else { f.nextWaveT -= dt; if (f.nextWaveT <= 0) startRaid(); }
 }

@@ -65,6 +65,8 @@ kbd { font: 700 11px/1 var(--body); background: var(--wool-2); border: 2px solid
 .mbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--cocoa); }
 #tracker { position: fixed; top: calc(var(--sat) + 200px); left: max(10px, var(--sal)); width: 240px; padding: 9px 12px; z-index: 4; }
 #tracker b { font: 600 15px var(--display); display: block; text-wrap: balance; }
+.goal { font: 800 10px var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--cocoa-soft); border-bottom: 2px dashed #ead9c4; padding-bottom: 4px; margin-bottom: 4px; }
+.thint { margin-top: 4px; font: 600 12px/1.35 var(--body); color: var(--cocoa-soft); }
 .eyebrow { font: 700 10px var(--body); text-transform: uppercase; letter-spacing: .12em; color: var(--berry); }
 .tline { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 13px; }
 .tline small { color: var(--cocoa-soft); font-variant-numeric: tabular-nums; }
@@ -271,7 +273,7 @@ body.touch #weapon small { display: none; }
     <div class="milkdots" aria-hidden="true">
       <i style="background:#fdfbf2"></i><i style="background:#8a5a3b"></i><i style="background:#ff9fc0"></i><i style="background:#ffe27a"></i><i style="background:#7d8cff"></i><i style="background:#ffa94d"></i><i style="background:#f7d3e4"></i><i style="background:#e8cfa8"></i><i style="background:#9ff0cf"></i><i style="background:#d9d2c6"></i><i style="background:#a9b8ff"></i><i style="background:#ffcf3d"></i>
     </div>
-    <p class="tag-line">Start with one cow and one black sheep. Explore the forest to find eleven more kinds of cow. Keep your sheep's fleece white. Feed the Great Spindle so the yarn shield protects the Sheep-a-verse. Find love in Buttercup Hollow. And when the evil kittens come, pick up a cow and <b>squeeze</b>.</p>
+    <p class="tag-line"><b>Your goal:</b> free the sacred white sheep from King Clawdius, the kitten king. Start with one cow and one black sheep. Explore the forest to find eleven more kinds of cow. Keep your sheep's fleece white. Feed the Great Spindle so the yarn shield protects the Sheep-a-verse. Find love in Buttercup Hollow. And when the evil kittens come, pick up a cow and <b>squeeze</b>.</p>
     <div class="tbtns">
       <button class="btn primary" id="t-cont" hidden>Continue</button>
       <button class="btn primary" id="t-new">New farm</button>
@@ -286,12 +288,12 @@ body.touch #weapon small { display: none; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/data.js?v=16"></script>
-<script src="js/engine.js?v=16"></script>
-<script src="js/models.js?v=16"></script>
-<script src="js/world.js?v=16"></script>
-<script src="js/explore.js?v=16"></script>
-<script src="js/ui.js?v=16"></script>
-<script src="js/game.js?v=16"></script>
+<script src="js/data.js?v=18"></script>
+<script src="js/engine.js?v=18"></script>
+<script src="js/models.js?v=18"></script>
+<script src="js/world.js?v=18"></script>
+<script src="js/explore.js?v=18"></script>
+<script src="js/ui.js?v=18"></script>
+<script src="js/game.js?v=18"></script>
 </body>
 </html>

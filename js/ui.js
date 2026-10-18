@@ -52,6 +52,7 @@ function dialog(key, lines, buttons) {
 
 /* ---------- Market ---------- */
 function openMarket(tab = 'sell') {
+  if (state.flags.breached) { toast('The Moo Market is closed! Moolissa is hiding from the kittens. Restart the shield first.', 'bad'); return; }
   let t = tab;
   const sellRow = (label, sw, count, price, fn) => `<div class="row"><span class="nm">${sw}${label} <small>×${count}</small></span><span class="pr">${price}c each</span>${B('Sell 1', () => { fn(1); refreshModal(); }, { disabled: !count })}${B('Sell all', () => { fn(count); refreshModal(); }, { disabled: !count, cls: 'ghost' })}</div>`;
   const sold = n => { if (n > 0) { sfx('coin'); stat('sold', 1); } };
@@ -122,16 +123,25 @@ function openQuests() {
     if (q) {
       const pr = state.quest.phase === 'active' ? questProgress(q) : null;
       cur = `<div class="qcard"><div class="eyebrow">Quest ${state.quest.i + 1} of ${QUESTS.length}</div><h3>${q.title}</h3><p>${q.text}</p>
-        <p class="muted">${state.quest.phase === 'offer' ? `Talk to ${NPC_DEF[q.giver].name} to begin.` : pr.done ? `Done! Return to ${NPC_DEF[q.turnin || q.giver].name}.` : `Progress: ${pr.label}`}</p></div>`;
+        <p><b>How:</b> ${esc(q.hint || '')}</p><p class="muted">${state.quest.phase === 'offer' ? `Talk to ${NPC_DEF[q.giver].name} to begin.` : pr.done ? `Done! Return to ${NPC_DEF[q.turnin || q.giver].name}.` : `Progress: ${pr.label}`}</p></div>`;
     } else cur = `<div class="qcard"><h3>Hero of the Sheep-a-verse</h3><p>The story is complete. Keep farming, keep the shield strong, and check the bounty board each morning.</p></div>`;
     const done = QUESTS.slice(0, state.quest.i).map(x => `<li>${x.title}</li>`).join('');
     const rom = Object.keys(FARMERS).map(k => { const r = state.romance[k], F = FARMERS[k]; const pr = F.problems[r.p];
       const need = pr ? Object.entries(pr.need).map(([m, n]) => `${n} ${MILK[m].name}`).join(' + ') : '';
       return `<div class="row tall"><span class="nm">${F.name} <small>${!r.met ? `Visit ${F.name.split(' ')[0]} in Buttercup Hollow.` : r.status === 'sweet' ? 'Your sweetheart ♥' : r.status === 'friend' ? 'Best friends' : pr ? (r.aff >= r.p * 20 ? `Needs: ${need}` : `Next problem at ${r.p * 2} hearts`) : r.aff >= 100 ? 'Has something to tell you...' : 'Raise hearts to 10 with gifts, talks and dates'}</small></span>${heartsRow(r.aff)}</div>`; }).join('');
     return `<header class="mh"><h2>Quests</h2>${B('Close', closeModal, { cls: 'ghost x' })}</header><div class="list">${cur}
-      <h3>Farmers' problems & romance</h3>${rom}
+      <h3>Optional: farmers' problems & romance</h3>${rom}
       ${done ? `<h3>Completed</h3><ol class="done">${done}</ol>` : ''}</div>`;
   });
+}
+
+/* ---------- Victory ---------- */
+function showVictory() {
+  showModal(() => `<header class="mh"><h2>You saved the Sheep-a-verse!</h2></header><div class="list">
+    <p>The sacred white sheep is home, the shield glows gold, and King Clawdius is napping in his cave. You beat Tori's Super Milkers!</p>
+    <div class="chips"><span class="chip">Days: ${state.day}</span><span class="chip">Kittens bonked: ${state.stats.kittens || 0}</span><span class="chip">Cows: ${state.cows.length}</span><span class="chip">Sheep: ${state.sheep.length}</span>${state.sweetheart ? `<span class="chip">Sweetheart: ${esc(FARMERS[state.sweetheart].name)}</span>` : ''}</div>
+    <p><b>But it isn't over.</b> The kittens are furious about their King. In a moment, endless hordes begin, and every wave is bigger than the last. How long can you and your herd hold the line?</p>
+    <div class="foot">${B('Bring it on!', closeModal, { cls: 'primary' })}</div></div>`);
 }
 
 /* ---------- Herd Book ---------- */
@@ -211,11 +221,12 @@ function openHelp() {
       <p><b>2. Sell.</b> Put milk and wool in the Shipping Crate by your farmhouse for coins. Spend coins at the Moo Market on upgrades.</p>
       <p><b>3. Explore.</b> Pick up a cow (she is your milk blaster) and search the dense forest around the castle. Wild cows and whiter sheep hide among the trees, the rarest ones deepest in. Befriend them (E) and lead them home. Kittens roam the woods and guard the rare ones.</p>
       <p><b>4. Protect the city.</b> Feed wool to the Great Spindle. Its yarn flows into the shield around the castle by itself. At 20:00 kittens raid the shield, and 1 to 3 sneak onto your farm to knock your animals out. Arrows at the edge of the screen point at them. Squirt them! Press <kbd>G</kbd> and your whole herd follows you and squirts too. The more cows you own, the bigger the raids.</p>
-      <p><b>5. The big goal.</b> Bring all 12 kinds of cow home, then use the crystal in the middle of town to fuse them into the Super Milker Cow. Use her rainbow milk to beat King Clawdius in Catnap Cavern, free the Seraph Sheep, then survive endless raids.</p>
+      <p><b>Why the shield matters:</b> while it stands, the Moo Market is open, temple blessings work, and the city pays you every morning (more for a fuller shield). If kittens break it, they flood the city, the market closes and blessings stop until you feed the Spindle enough wool to restart it.</p>
+      <p><b>5. The big goal.</b> Bring all 12 kinds of cow home, then use the crystal in the middle of town to fuse them into the Super Milker Cow. Use her rainbow milk to beat King Clawdius in Catnap Cavern, and lead the sacred white Seraph Sheep home. Its fleece gives the city the strongest shield of all and wins the game. Then the endless hordes begin.</p>
       <p>The quest box on the left always shows your next step, and its arrow points the way. Press <kbd>B</kbd> for the Herd Book.</p>
       <h3>Every milk is a different weapon</h3>
       ${shots}
-      <h3>Love in Buttercup Hollow</h3>
+      <h3>Optional: love in Buttercup Hollow</h3>
       <p>Hazel, Rowan, Theo and June live west of your farm. Talk to them daily, give milk they love, solve their problems with milk, and go on dates. At 10 hearts with all four problems solved, they may confess their feelings.</p>
       <h3>The Super Milker</h3>
       <p>King Clawdius sleeps in Catnap Cavern in the far east. Only Super Milker Milk can hurt him: churn one of every milk at the Creamery, feed it to a cow, carry her inside and squeeze!</p></div>`;
@@ -290,17 +301,18 @@ function cardFor(it) {
       return { title: 'Heart of the Shield', sub: 'The crystal that powers the force field', sw: '#7fe8ff',
         bars: [{ label: `Shield ${Math.round(state.field.power)}/${maxPower()}`, v: state.field.power / maxPower(), cls: 'shield' }],
         lines: [state.flags.breached ? 'The shield is DOWN. Feed wool to the Spindle: its yarn restarts the shield at 25 power.' : 'Yarn from the Great Spindle flows in here by itself. Whiter yarn adds more power.',
-          owned ? 'Prisma the Super Milker has been born!' : `Own all 12 kinds of cow and use this crystal to fuse them into the Super Milker. You have ${have}/12.`], acts };
+          owned ? 'Prisma the Super Milker has been born!' : `Own all 12 kinds of cow and use this crystal to fuse them into the Super Milker (one of each kind fuses; extras stay). You have ${have}/12.`], acts };
     }
     case 'temple': {
       const fl = faithLevel(), next = FAITH[fl + 1];
-      return { title: 'Temple of the Great Sheep', sub: `Faith level ${fl} · ${state.faith} faith`, sw: '#ffe27a',
+      return { title: 'Temple of the Great Sheep', sub: `Optional · Faith level ${fl} · ${state.faith} faith${state.flags.breached ? ' · blessings paused' : ''}`, sw: '#ffe27a',
         bars: next ? [{ label: `Next blessing at ${next}`, v: (state.faith - FAITH[fl]) / (next - FAITH[fl]), cls: 'gold' }] : [],
         lines: [next ? `Next: ${BLESS[fl + 1]}` : 'All blessings granted. The Great Sheep smiles on you.'],
         acts: [{ key: 'E', label: 'Offer best wool', fn: () => offerWool(false), disabled: !woolTotal() }, { key: '1', label: 'Offer all wool', fn: () => offerWool(true), disabled: !woolTotal() }, { key: '2', label: `Offer all milk (${milkTotal()})`, fn: offerMilk, disabled: !milkTotal() }] };
     }
-    case 'market': return { title: 'Moo Market', sub: 'Buy, sell, upgrade', sw: '#ff9fc0', lines: ['Sell milk, wool, yarn and treats. Buy cows, sheep and upgrades.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('sell') }, { key: '1', label: 'Buy animals', fn: () => openMarket('animals') }, { key: '2', label: 'Upgrades', fn: () => openMarket('upgrades') }] };
-    case 'board': return { title: 'Bounty Board', sub: 'Requests from the townsfolk', sw: '#b98a5e', lines: [`${state.bounties.filter(b => !b.done).length} open bounties`], acts: [{ key: 'E', label: 'Read bounties', fn: openBoard }] };
+    case 'market': if (state.flags.breached) return { title: 'Moo Market (CLOSED)', sub: 'Moolissa is hiding from the kittens', sw: '#ff9fc0', lines: ['The market reopens when the shield is back up.'], acts: [] };
+      return { title: 'Moo Market', sub: 'Buy, sell, upgrade', sw: '#ff9fc0', lines: ['Sell milk, wool, yarn and treats. Buy cows, sheep and upgrades.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('sell') }, { key: '1', label: 'Buy animals', fn: () => openMarket('animals') }, { key: '2', label: 'Upgrades', fn: () => openMarket('upgrades') }] };
+    case 'board': return { title: 'Bounty Board', sub: 'Optional requests for extra coins', sw: '#b98a5e', lines: [`${state.bounties.filter(b => !b.done).length} open bounties`], acts: [{ key: 'E', label: 'Read bounties', fn: openBoard }] };
     case 'hayloft': return { title: 'Hay Loft', sub: 'Free hay once a day', sw: '#f2cf6b', lines: [state.flags.hayDay === state.day ? 'Come back tomorrow for more.' : '3 bundles of hay are waiting.'], acts: [{ key: 'E', label: 'Take hay', fn: takeHay, disabled: state.flags.hayDay === state.day }] };
     case 'clover': return { title: 'Clover Patch', sub: 'Sheep snacks', sw: '#5fcf6a', lines: [state.flags.cloverT > 0 ? `Regrowing: ${Math.ceil(state.flags.cloverT)}s` : 'A lucky clover is ready.'], acts: [{ key: 'E', label: 'Pick clover', fn: pickClover, disabled: state.flags.cloverT > 0 }] };
     case 'home': {
@@ -359,12 +371,19 @@ function updateHUD() {
   $('#raid').textContent = state.flags.endless ? (raid.active ? `Endless wave ${state.wave}: ${alive} left` : `Next wave in ${Math.max(0, Math.ceil(state.flags.nextWaveT || 0))}s`) : raid.active ? `Raid ${state.wave}: ${alive} kitten${alive === 1 ? '' : 's'} left` : state.quest.i < 9 ? 'No raids yet' : `Next raid at 20:00`;
   // quest tracker
   const q = curQuest(), tk = $('#tracker');
-  let line, title;
-  if (!q) { title = 'Hero of the Sheep-a-verse'; line = 'Story complete! Keep farming and fill the bounty board.'; }
-  else { title = q.title; const st = state.quest; if (st.phase === 'offer') line = `Talk to ${NPC_DEF[q.giver].name}`; else { const p = questProgress(q); line = p.done ? `Return to ${NPC_DEF[q.turnin || q.giver].name}` : `${q.text}${p.label ? ' · ' + p.label : ''}`; } }
+  let line, title, hint = '';
+  if (!q) { title = 'Hero of the Sheep-a-verse'; line = state.flags.endless ? `Endless wave ${state.wave} · best ${state.stats.bestWave || 0}` : 'The hordes are coming...'; hint = 'Keep your herd close (G) and the shield strong.'; }
+  else {
+    title = q.title; const st = state.quest;
+    if (st.phase === 'offer') { line = `Talk to ${NPC_DEF[q.giver].name}`; hint = 'Look for the yellow ! above their head. Press E to talk.'; }
+    else { const p = questProgress(q); line = p.done ? `Return to ${NPC_DEF[q.turnin || q.giver].name}` : `${q.text}${p.label ? ' · ' + p.label : ''}`; hint = p.done ? 'Look for the green ? above their head. Press E to talk.' : q.hint || ''; }
+  }
   const tgt = q && !player.inCave ? questTarget() : null; let arrow = '';
   if (tgt) { const dx = tgt.x - px(), dz = tgt.z - pz(), d = Math.hypot(dx, dz); if (d > 8) arrow = `<span class="arrow" style="transform:rotate(${Math.atan2(dx, -dz)}rad)">➤</span><small>${Math.round(d)}m</small>`; }
-  tk.innerHTML = `<div class="eyebrow">${q ? `Quest ${state.quest.i + 1}/${QUESTS.length}` : 'Free play'}</div><b>${esc(title)}</b><div class="tline">${arrow}<span>${esc(line)}</span></div>`;
+  let ch = CHAPTERS[0], chn = 1; CHAPTERS.forEach((c, i) => { if (state.quest.i >= c.from) { ch = c; chn = i + 1; } });
+  tk.innerHTML = `<div class="goal">Goal: ${esc(q ? GOAL_TEXT : 'Survive the endless hordes!')}</div>
+    <div class="eyebrow">${q ? `Chapter ${chn}/${CHAPTERS.length}: ${esc(ch.title)}` : 'After the story'}</div><b>${esc(title)}</b>
+    <div class="tline">${arrow}<span>${esc(line)}</span></div>${hint ? `<div class="thint">How: ${esc(hint)}</div>` : ''}`;
   const cw = player.carrying;
   $('#b-cow').classList.toggle('on', !!cw);
 }

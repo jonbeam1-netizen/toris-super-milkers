@@ -2,7 +2,7 @@
 /* ============================================================
    Game logic
    ============================================================ */
-const CYCLE = 320, DAY = 240;
+const CYCLE = 335, DAY = 225; // 225s of day, 110s of night
 const SAVE_KEY = 'tsm.save.v1';
 let state = null, running = false, paused = false, elapsed = 0;
 const player = {};
@@ -19,9 +19,14 @@ const milkTotal = () => MILK_KEYS.reduce((a, k) => a + (state.inv.milk[k] || 0),
 const woolTotal = () => state.inv.wool.reduce((a, b) => a + b, 0);
 const yarnTotal = () => state.inv.yarn.reduce((a, b) => a + b, 0);
 const basketTotal = () => state.spindle.basket.reduce((a, b) => a + b, 0);
-const maxPower = () => 100 + 25 * state.upg.amp;
+const hasSeraph = () => state.sheep.some(sh => sh.breed === 'seraph');
+const maxPower = () => 100 + 25 * state.upg.amp + (hasSeraph() ? 100 : 0);
+/* Temple blessings only work while the shield stands */
+const blessLevel = () => state.flags.breached ? 0 : faithLevel();
+/* How dangerous the world is: grows with story progress, herd size and days survived */
+const threat = () => state.quest.i + state.cows.length * 0.8 + state.day * 0.6 + (state.flags.endless ? 12 + state.wave * 2.5 : 0);
 const faithLevel = () => { let l = 0; FAITH.forEach((f, i) => { if (state.faith >= f) l = i; }); return l; };
-const ampMult = () => UPG.amp.vals[state.upg.amp] * (faithLevel() >= 5 ? 1.25 : 1);
+const ampMult = () => UPG.amp.vals[state.upg.amp] * (blessLevel() >= 5 ? 1.25 : 1);
 const tierOf = w => { let t = 0; TIERS.forEach((T, i) => { if (w >= T.min) t = i; }); return t; };
 const isFieldUp = () => state.field.power > 0 && !state.flags.breached;
 const animalCap = () => UPG.barn.vals[state.upg.barn];
@@ -177,7 +182,7 @@ function milkCow(e) {
   if (e.carried) { toast('Put her down first to milk her into the bucket.'); return; }
   if (c.cd > 0) return;
   if (milkTotal() >= bucketCap()) { toast('Your bucket is full. Sell milk at the Moo Market, mix treats at the Creamery, or drink some.'); return; }
-  let n = 1; if (c.happy >= 70) n++; if (faithLevel() >= 4 && Math.random() < 0.4) n++; if (Math.random() < state.level * 0.02) n++;
+  let n = 1; if (c.happy >= 70) n++; if (blessLevel() >= 4 && Math.random() < 0.4) n++; if (Math.random() < state.level * 0.02) n++;
   const mk = c.type === 'super' ? pick(MILK_KEYS) : T.milk;
   const got = addMilk(mk, n + (c.type === 'super' ? 1 : 0));
   c.cd = T.cd * (c.happy < 25 ? 2 : 1); c.happy = clamp(c.happy - 5, 0, 100);
@@ -271,9 +276,10 @@ function collectYarn() {
   if (n) { floatText(SPINDLE.x + 7, 2.5, SPINDLE.z + 5, `+${n} yarn`, 'wool'); sfx('coin'); }
 }
 function autoWeave(t) {
+  stat('yarnWoven');
   if (state.field.power >= maxPower() - 0.5) { state.spindle.basket[t]++; burst('sparkle', SPINDLE.x + 7, 2, SPINDLE.z + 5, 5); return; }
   const g = TIERS[t].power * ampMult();
-  state.field.power = Math.min(maxPower(), state.field.power + g); stat('yarnWoven'); domeFlash = Math.max(domeFlash, 0.4);
+  state.field.power = Math.min(maxPower(), state.field.power + g); domeFlash = Math.max(domeFlash, 0.4);
   burst('zap', C.x, 5, C.z, 8); burst('sparkle', SPINDLE.x, 9, SPINDLE.z, 6);
   if (!player.inCave && dist2(px(), pz(), C.x, C.z) < 75) floatText(C.x, 7, C.z, `${TIERS[t].name} yarn: shield +${Math.round(g)}`, 'shield', 1.3);
   if (state.flags.breached && state.field.power >= 25) { state.flags.breached = false; toast('The shield is back up! Any kittens inside get zapped out.', 'good'); }
@@ -431,7 +437,7 @@ function deliverBounty(i) {
 /* ---------- Quests ---------- */
 const curQuest = () => QUESTS[state.quest.i];
 function questProgress(q) {
-  const st = state.quest;
+  const st = state.quest; st.base = 0;
   switch (q.kind) {
     case 'stat': { const cur = Math.min(q.n, (state.stats[q.stat] || 0) - st.base); return { cur, n: q.n, done: cur >= q.n, label: `${Math.max(0, cur)}/${q.n}` }; }
     case 'item': { const cur = q.item.type === 'milk' ? (state.inv.milk[q.item.key] || 0) : state.inv.wool[q.item.tier]; return { cur: Math.min(cur, q.n), n: q.n, done: cur >= q.n, label: `${Math.min(cur, q.n)}/${q.n}` }; }
@@ -445,7 +451,7 @@ function questProgress(q) {
 }
 function acceptQuest() {
   const q = curQuest(); if (!q) return;
-  state.quest.phase = 'active'; state.quest.base = q.kind === 'stat' ? (state.stats[q.stat] || 0) : 0;
+  state.quest.phase = 'active'; state.quest.base = 0; // lifetime counts: if you already did it, it's done
   if (q.stat === 'duchess') { state.flags.duchessPending = true; if (raid.active) spawnKitten('duchess', 'field'); }
   toast(`New quest: ${q.title}`, 'good'); sfx('click');
 }
@@ -458,8 +464,8 @@ function turnInQuest() {
   const rewardLine = `(Reward: ${[r.cow && 'a ' + COWS[r.cow].name, r.coins && r.coins + ' coins', r.hay && r.hay + ' hay', r.clover && r.clover + ' clover', r.faith && r.faith + ' faith', r.xp && r.xp + ' XP'].filter(Boolean).join(', ')})`;
   const nq = curQuest();
   const next = nq && nq.giver === key ? [{ label: 'What\'s next?', fn: () => dialog(key, nq.talk, [{ label: 'Accept quest', fn: acceptQuest }, { label: 'Not yet', cls: 'ghost' }]) }] : null;
-  if (!nq) { toast("Main story complete! You're the Hero of the Sheep-a-verse.", 'good'); burst('rainbow', px(), 3, pz(), 60); }
-  dialog(key, q.finish.concat([rewardLine]), next);
+  if (!nq) { burst('rainbow', px(), 3, pz(), 60); state.flags.endlessT = 45; setTimeout(showVictory, 400); }
+  if (nq) dialog(key, q.finish.concat([rewardLine]), next);
   saveGame(true);
 }
 function talkNPC(key) {
@@ -585,7 +591,7 @@ function defeatKitten(k, byPlayer) {
   burst('zzz', k.g.position.x, 1.5 * k.def.scale, k.g.position.z, 4); burst('coin', k.g.position.x, 1, k.g.position.z, 6); sfx('meow');
   if (byPlayer) { stat('kittens'); addXP(k.def.boss ? 150 : 6); }
   if (k.type === 'duchess') { stat('duchess'); state.flags.duchessPending = false; hideBoss(); toast('Duchess Whiskerella curls up and naps! The raid loses its queen.', 'good'); }
-  if (k.type === 'clawdius') { stat('clawdius'); state.flags.clawdius = true; state.flags.endlessT = 75; W.cageBars.visible = false; const sw = wilds.find(w => w.id === 'seraph'); if (sw) sw.caged = false; setTimeout(() => toast('The cage springs open! The Seraph Sheep is free. Befriend it (E) and lead it home to your meadow.', 'love'), 2600); hideBoss(); caveBoss = null; addXP(300); burst('rainbow', k.g.position.x, 4, k.g.position.z, 80); sfx('level'); toast('King Clawdius is defeated! He curls up purring like a tiny kitten.', 'good'); for (const o of kittens) if (o !== k && o.cave) defeatKitten(o, false); }
+  if (k.type === 'clawdius') { stat('clawdius'); state.flags.clawdius = true; W.cageBars.visible = false; const sw = wilds.find(w => w.id === 'seraph'); if (sw) sw.caged = false; setTimeout(() => toast('The cage springs open! The Seraph Sheep is free. Befriend it (E) and lead it home to your meadow.', 'love'), 2600); hideBoss(); caveBoss = null; addXP(300); burst('rainbow', k.g.position.x, 4, k.g.position.z, 80); sfx('level'); toast('King Clawdius is defeated! He curls up purring like a tiny kitten.', 'good'); for (const o of kittens) if (o !== k && o.cave) defeatKitten(o, false); }
 }
 function updateProjs(dt) {
   for (let i = projs.length - 1; i >= 0; i--) {
@@ -652,8 +658,8 @@ function explode(p, R) {
 }
 
 /* Kittens sneak in from just past the bottom, left or right edge of the screen, never from the castle side */
-function edgeSpawn() {
-  const side = pick(['left', 'right', 'bottom']), zz = zoom;
+function edgeSpawn(forceSide) {
+  const side = forceSide || pick(['left', 'right', 'bottom']), zz = zoom;
   let x, z;
   if (player.inCave) { // Tori is underground: use the edges of the overworld instead
     if (side === 'left') { x = -188; z = rand(-40, 120); } else if (side === 'right') { x = 188; z = rand(-40, 120); } else { x = rand(-150, 150); z = 136; }
@@ -673,25 +679,38 @@ function spawnKitten(type, goal, at) {
   if (at) { x = at.x; z = at.z; } else ({ x, z } = edgeSpawn());
   m.g.position.set(x, 0, z); scene.add(m.g);
   const fxm = new THREE.Mesh(G.sphLo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })); fxm.position.y = 0.6; fxm.scale.set(0.9, 0.7, 1.1); fxm.visible = false; m.g.add(fxm);
-  const k = { m, g: m.g, type, def: K, hp: K.hp * (1 + Math.max(0, state.wave - 4) * 0.08), max: 0, goal, state: 'move', cd: rand(0, 1), t: 0, seed: rand(0, 10), kbx: 0, kbz: 0, stun: 0, root: 0, slow: 0, flash: 0, face: -Math.PI / 2, tgt: null, harass: 0, summonT: 8, fxm, cave: false };
+  const k = { m, g: m.g, type, def: K, hp: K.hp * (K.boss ? 1 + state.wave * 0.05 : 1 + threat() * 0.03), max: 0, goal, state: 'move', cd: rand(0, 1), t: 0, seed: rand(0, 10), kbx: 0, kbz: 0, stun: 0, root: 0, slow: 0, flash: 0, face: -Math.PI / 2, tgt: null, harass: 0, summonT: 8, fxm, cave: false };
   k.max = k.hp; kittens.push(k);
   if (K.boss) { showBoss(K.name, 1); if (type === 'duchess') { toast('Duchess Whiskerella has joined the raid!', 'bad'); sfx('roar'); } }
   return k;
 }
+function kittenType(T) {
+  const pool = ['tabby', 'tabby', 'tabby'];
+  if (T >= 6) pool.push('ginger', 'ginger');
+  if (T >= 10) pool.push('chonk');
+  if (T >= 14) pool.push('shadow', 'shadow');
+  if (T >= 19) pool.push('siamese', 'siamese', 'chonk');
+  if (T >= 30) pool.push('shadow', 'siamese', 'chonk');
+  return pick(pool);
+}
 function waveList(n) {
-  const L = [], count = Math.min(3 + (n - 1) * 2 + Math.floor(state.cows.length * 1.5), 48);
-  for (let i = 0; i < count; i++) {
-    let t = 'tabby'; const r = Math.random();
-    if (n >= 2 && r < 0.22) t = 'ginger'; else if (n >= 3 && r < 0.36) t = 'chonk'; else if (n >= 4 && r < 0.52) t = 'shadow'; else if (n >= 6 && r < 0.64) t = 'siamese';
-    L.push({ t, at: i * (24 / count) + rand(0, 1.5), goal: 'field' });
+  const T = threat(), endless = state.flags.endless, L = [];
+  const total = Math.min(Math.round(4 + T * 1.15 + n * 1.0), endless ? 170 : 75);
+  const span = endless ? 45 + Math.min(70, n * 5) : 90;           // kittens trickle in over this many seconds
+  let t = 3, pack = 0;
+  while (L.length < total) {
+    const size = Math.min(total - L.length, randi(2, 3 + Math.floor(T / 7)));
+    const edge = pick(['left', 'right', 'bottom']);
+    for (let j = 0; j < size; j++) L.push({ t: kittenType(T), at: t + j * 0.5, goal: 'field', edge, pack });
+    pack++; t += span * size / total * rand(0.6, 1.4);
   }
   const farmN = Math.min(3, 1 + Math.floor((n - 1) / 3));
-  for (let i = 0; i < farmN; i++) L.push({ t: n >= 3 && Math.random() < 0.35 ? 'ginger' : 'tabby', at: rand(2, 20), goal: 'farm' });
-  if (state.flags.duchessPending || n % 5 === 0) L.push({ t: 'duchess', at: 10, goal: 'field' });
+  for (let i = 0; i < farmN; i++) L.push({ t: T >= 6 && Math.random() < 0.4 ? 'ginger' : 'tabby', at: rand(4, 40), goal: 'farm', edge: pick(['left', 'right', 'bottom']), pack: 'f' + i });
+  if (state.flags.duchessPending || (!endless && n % 5 === 0) || (endless && n % 3 === 0)) L.push({ t: 'duchess', at: span * 0.5, goal: 'field', edge: 'bottom', pack: 'd' });
   return L.sort((a, b) => a.at - b.at);
 }
 function startRaid() {
-  state.wave++; raid = { active: true, timer: 0, queue: waveList(state.wave), breachedThisRaid: false };
+  state.wave++; raid = { active: true, timer: 0, queue: waveList(state.wave), breachedThisRaid: false, packs: {} };
   toast(state.flags.endless ? `ENDLESS WAVE ${state.wave}! Here they come!` : `Night ${state.day}: kittens are attacking the shield around the castle! Grab a cow and squirt them.`, 'bad'); sfx('alarm');
 }
 function endRaid() {
@@ -703,7 +722,7 @@ function endRaid() {
 }
 function breach() {
   state.flags.breached = true; raid.breachedThisRaid = true; state.field.power = 0;
-  toast('The force field has fallen! Kittens are invading the city. Feed wool to the Spindle to power it back up (25 to restart).', 'bad'); sfx('alarm');
+  toast('The shield has FALLEN! Kittens are pouring into the city. The Moo Market is closed and temple blessings are paused until you restart it. Feed the Spindle wool (25 power restarts it).', 'bad'); sfx('alarm');
 }
 function scratchField(k) {
   state.field.power -= k.def.dmg; domeFlash = Math.max(domeFlash, 0.5); sfx('zap');
@@ -726,11 +745,17 @@ function hurtPlayer(n, src) {
   if (state.hearts <= 0) faint();
 }
 function faint() {
-  const lost = Math.floor(state.coins * 0.1); state.coins -= lost; state.hearts = maxHearts();
-  if (player.carrying) putDownCow();
-  if (player.inCave) leaveCave(true);
-  player.g.position.set(SPAWN.x, 0, SPAWN.z); player.vx = player.vz = 0; player.inv = 2;
-  toast(`Tori fainted and woke up on the farm${lost ? `, dropping ${lost} coins` : ''}.`, 'bad');
+  if (player.dead) return;
+  player.dead = true; shootHeld = false;
+  fadeScreen(() => {
+    if (player.carrying) putDownCow();
+    if (player.inCave) leaveCave(true);
+    player.g.position.set(SPAWN.x, 0, SPAWN.z); player.vx = player.vz = 0; player.inv = 3; player.dead = false; state.hearts = maxHearts();
+    if (!state.flags.endless) state.t = CYCLE - 0.05;   // wake up the next morning
+    for (const e of cowEnts) { if (e.fusing) continue; e.following = false; e.returning = false; const p = penRandom(COW_PEN); e.g.position.set(p.x, 0, p.z); e.ko = 25; }
+    for (const e of sheepEnts) e.ko = 25;
+    toast('Tori fainted... and woke up the next morning. The kittens knocked out your whole herd while you slept!', 'bad');
+  });
 }
 
 function updateKittens(dt) {
@@ -1017,7 +1042,7 @@ function updateCows(dt) {
   }
 }
 function updateSheep(dt) {
-  const glow = faithLevel() >= 3, grow = faithLevel() >= 1 ? 1.25 : 1;
+  const glow = blessLevel() >= 3, grow = blessLevel() >= 1 ? 1.25 : 1;
   for (const e of sheepEnts) {
     const s = e.d, B = BREEDS[s.breed];
     s.fleece = Math.min(1, s.fleece + dt / 90 * grow); s.brushCd = Math.max(0, s.brushCd - dt);
@@ -1101,6 +1126,7 @@ function updateMarkers() {
   }
   for (const key in farmerEnts) farmerEnts[key].marker.visible = !state.romance[key].met || problemAvailable(key) || confessionReady(key);
 }
+const _gold = new THREE.Color(0xffd86a);
 function updateWorld(dt) {
   const sp = state.spindle, spinning = sp.momentum > 0 && sp.queue.length > 0;
   if (sp.momentum > 0 && state.quest.i >= 7) {
@@ -1108,19 +1134,20 @@ function updateWorld(dt) {
     if (sp.momentum === 0) toast('The Great Spindle has stopped! Feed it wool to keep the yarn coming.', 'bad');
   }
   if (spinning) {
-    sp.prog += dt / (UPG.gears.vals[state.upg.gears] / (faithLevel() >= 5 ? 2 : 1));
+    sp.prog += dt / (UPG.gears.vals[state.upg.gears] / (blessLevel() >= 5 ? 2 : 1));
     if (sp.prog >= 1) { sp.prog = 0; autoWeave(sp.queue.shift()); }
   }
   const wspd = spinning ? 3 : sp.momentum > 0 ? 0.7 : 0;
   W.spWheel.rotation.z -= dt * wspd; W.spinner.rotation.y += dt * wspd * 4; W.spRing.rotation.z += dt * (0.3 + wspd * 0.2);
   W.cop.scale.set(1.2 + sp.momentum / 220, 2.6 + sp.momentum / 120, 1.2 + sp.momentum / 220);
   W.basketYarn.visible = basketTotal() > 0;
-  if (state.field.power > 0 && !state.flags.breached && state.quest.i >= 8) state.field.power = Math.max(0, state.field.power - dt * 0.15 * (faithLevel() >= 2 ? 0.7 : 1));
+  if (state.field.power > 0 && !state.flags.breached && state.quest.i >= 8) state.field.power = Math.max(0, state.field.power - dt * 0.15 * (blessLevel() >= 2 ? 0.7 : 1) * (hasSeraph() ? 0.1 : 1));
+  if (hasSeraph() && !state.flags.breached) state.field.power = Math.min(maxPower(), state.field.power + dt * 0.35);
   if (state.field.power <= 0 && !state.flags.breached && raid.active) breach();
   const pr = state.field.power / maxPower(); domeFlash = Math.max(0, domeFlash - dt * 1.5);
   const dm = W.dome.material;
   if (state.flags.breached) { dm.opacity = Math.random() < 0.1 ? 0.15 : 0.02; dm.color.setHex(0xff6f91); }
-  else { dm.opacity = 0.12 + pr * 0.32 + domeFlash * 0.35 + (pr < 0.25 ? Math.random() * 0.1 : 0); dm.color.setRGB(lerp(1, 0.44, pr), lerp(0.45, 0.89, pr), lerp(0.6, 1, pr)); }
+  else { dm.opacity = 0.12 + pr * 0.32 + domeFlash * 0.35 + (pr < 0.25 ? Math.random() * 0.1 : 0); dm.color.setRGB(lerp(1, 0.44, pr), lerp(0.45, 0.89, pr), lerp(0.6, 1, pr)); if (hasSeraph()) dm.color.lerp(_gold, 0.6); }
   dm.map.offset.x += dt * 0.004; dm.map.offset.y += dt * 0.01;
   W.domeRing.material.opacity = state.flags.breached ? 0.1 : 0.3 + pr * 0.5; W.domeRing.material.color.copy(dm.color);
   W.beam.material.opacity = state.flags.breached ? 0 : 0.08 + pr * 0.25; W.beam.material.color.copy(dm.color);
@@ -1167,10 +1194,18 @@ function updateTime(dt) {
   }
   if (raid.active) {
     raid.timer += dt;
-    while (raid.queue.length && raid.queue[0].at <= raid.timer) { const w = raid.queue.shift(); spawnKitten(w.t, w.goal); }
+    const cap = state.flags.endless ? 70 : 45, alive = kittens.filter(k => !k.cave && !k.guard && !k.roamer && k.state === 'move').length;
+    raid.packs = raid.packs || {};
+    if (alive < cap) while (raid.queue.length && raid.queue[0].at <= raid.timer) {
+      const w = raid.queue.shift(); let base = raid.packs[w.pack]; if (!base) base = raid.packs[w.pack] = edgeSpawn(w.edge);
+      spawnKitten(w.t, w.goal, { x: base.x + rand(-3, 3), z: base.z + rand(-3, 3) });
+    }
   }
   if (state.t >= CYCLE) {
+    const held = !state.flags.breached, pct = state.field.power / maxPower();
     state.t -= CYCLE; state.day++; if (!state.flags.endless) endRaid(); genBounties();
+    if (state.quest.i >= 8 && held) { const pay = Math.round(pct * (20 + state.day * 4)); if (pay > 0) { state.coins += pay; toast(`The Sheep-a-verse pays you ${pay} coins for keeping the shield at ${Math.round(pct * 100)}%.`, 'good'); } }
+    else if (state.quest.i >= 8) toast('The shield is still down: no pay from the city, the Moo Market stays closed and blessings are paused.', 'bad');
     toast(`Good morning! Day ${state.day} on Tori's Super Milkers.`, 'good');
     sweetheartGift(); saveGame(true);
   }
