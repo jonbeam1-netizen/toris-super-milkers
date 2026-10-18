@@ -97,8 +97,8 @@ function buildWorld() {
   flat(-90, 80, 60, 5, 0xd8c193, 0.05);
   flat(-104, 76, 5, 50, 0xd8c193, 0.05);
   flat(85, -20, 150, 5, 0xd1bd8f, 0.05);
-  disc(C.x, C.z, 49, 0xc9bca8, 0.08);
-  disc(C.x, C.z, 9, 0xb7a6e0, 0.1); disc(C.x, C.z, 7, 0xc9bca8, 0.11);
+  disc(C.x, C.z, 49, 0xcbb48c, 0.08);
+  disc(C.x, C.z, 9, 0xb7a6e0, 0.1); disc(C.x, C.z, 7, 0xcbb48c, 0.11);
   for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; flat(C.x + Math.sin(a) * 22, C.z + Math.cos(a) * 22, 1.6, 1.6, 0xb7a6e0, 0.1).rotation.z = a; }
 
   buildFarm();
@@ -238,9 +238,9 @@ function buildCity() {
 
   // Temple of the Great Sheep
   const t = new THREE.Group(); t.position.set(TEMPLE.x, 0, TEMPLE.z); scene.add(t);
-  P(t, G.cyl, 0xd9cdb8, 0, 0.5, 0, 11, 1, 11); P(t, G.cyl, 0xe4d9c6, 0, 1.5, 0, 9.5, 1, 9.5); P(t, G.cyl, 0xeee6d6, 0, 2.5, 0, 8, 1, 8);
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; P(t, G.cyl, 0xeee6d6, Math.sin(a) * 8.6, 6, Math.cos(a) * 8.6, 0.6, 8, 0.6); P(t, G.box, M(0xffd23f, 0x221800), Math.sin(a) * 8.6, 10.2, Math.cos(a) * 8.6, 1.5, 0.5, 1.5); circC(TEMPLE.x + Math.sin(a) * 8.6, TEMPLE.z + Math.cos(a) * 8.6, 0.8); }
-  const tr = P(t, G.torus, M(0xffd23f, 0x221800), 0, 10.6, 0, 8.6, 8.6, 8.6); tr.rotation.x = Math.PI / 2; tr.scale.set(8.6, 8.6, 30);
+  P(t, G.cyl, 0xbdb09a, 0, 0.5, 0, 11, 1, 11); P(t, G.cyl, 0xc9bda7, 0, 1.5, 0, 9.5, 1, 9.5); P(t, G.cyl, 0xd4c9b3, 0, 2.5, 0, 8, 1, 8);
+  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; P(t, G.cyl, 0xd8cdb6, Math.sin(a) * 8.6, 6, Math.cos(a) * 8.6, 0.6, 8, 0.6); P(t, G.box, M(0xffd23f, 0x221800), Math.sin(a) * 8.6, 10.2, Math.cos(a) * 8.6, 1.5, 0.5, 1.5); circC(TEMPLE.x + Math.sin(a) * 8.6, TEMPLE.z + Math.cos(a) * 8.6, 0.8); }
+  const tr = P(t, G.torus, M(0xe8b830, 0x000000), 0, 10.6, 0, 8.6, 8.6, 8.6); tr.rotation.x = Math.PI / 2; tr.scale.set(8.6, 8.6, 30);
   const gs = makeGreatSheep(); gs.g.position.set(0, 3, 0); gs.g.rotation.y = Math.atan2(C.x - TEMPLE.x, C.z - TEMPLE.z); t.add(gs.g); W.greatSheep = gs;
   for (const s of [-1, 1]) {
     const bx = Math.sin(gs.g.rotation.y + s * 0.6) * 11.5, bz = Math.cos(gs.g.rotation.y + s * 0.6) * 11.5;

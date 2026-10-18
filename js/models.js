@@ -79,7 +79,7 @@ function fleeceColor(w, out) {
 }
 function makeSheep(breed, golden) {
   const B = BREEDS[breed] || BREEDS.meadow, g = new THREE.Group();
-  const fleeceMat = golden ? M(0xfffbea, 0x3a3010) : new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: GRAD });
+  const fleeceMat = golden ? M(0xf6efd8, 0x1a1608) : new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: GRAD });
   const faceM = golden ? M(0xffcf3d, 0x2a1c00) : M(B.face);
   P(g, G.sph, 0xf5c6b8, 0, 1.05, 0, 0.6, 0.52, 0.78);
   const fleece = new THREE.Group(); fleece.position.set(0, 1.1, 0); g.add(fleece);

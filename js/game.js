@@ -594,6 +594,7 @@ function updateProjs(dt) {
         remove = true; break;
       }
     }
+    if (!remove && !player.inCave) { const t = soakTarget(p.m.position); if (t) { soak(t, p); addPuddle(t.g.position.x + rand(-0.5, 0.5), t.g.position.z + rand(-0.5, 0.5), p); remove = true; } }
     if (!remove && p.m.position.y < 0.05) { burst('milk', p.m.position.x, 0.1, p.m.position.z, 2, p.color); addPuddle(p.m.position.x, p.m.position.z, p); if (p.spec.fx === 'boom') explode(p, 3); remove = true; }
     if (remove || p.life <= 0) { p.dead = true; scene.remove(p.m); scene.remove(p.link); if (p.isSuper) p.mat.dispose(); projs.splice(i, 1); }
   }
@@ -764,6 +765,38 @@ function updateKittens(dt) {
     if (scratching) k.m.head.rotation.x = Math.sin(k.t * 16) * 0.15;
     k.m.body.scale.setScalar(k.flash > 0 ? 1.12 : 1);
     if (k.def.boss) showBoss(k.def.name, k.hp / k.max);
+  }
+}
+
+/* ---------- Soaking townsfolk, just for fun ---------- */
+let soakList = [];
+function rebuildSoakList() {
+  soakList = [];
+  for (const k in npcEnts) soakList.push({ ent: npcEnts[k], g: npcEnts[k].g, type: NPC_DEF[k].species === 'cow' ? 'cow' : 'sheep', h: 2.8 });
+  for (const k in farmerEnts) soakList.push({ ent: farmerEnts[k], g: farmerEnts[k].g, type: 'farmer', h: 3 });
+  for (const f of folk) soakList.push({ ent: f, g: f.g, type: 'sheep', h: 2.6 });
+  for (const e of sacred) soakList.push({ ent: e, g: e.g, type: 'sacred', h: 1.8 });
+}
+function soakTarget(pos) {
+  if (!soakList.length) rebuildSoakList();
+  for (const t of soakList) { const g = t.g.position, dx = pos.x - g.x, dz = pos.z - g.z; if (dx * dx + dz * dz < 0.85 && pos.y < g.y + t.h) return t; }
+  return null;
+}
+function soak(t, p) {
+  const e = t.ent, g = t.g;
+  burst(p.isSuper ? 'rainbow' : 'milk', g.position.x, g.position.y + t.h * 0.7, g.position.z, 4, p.color);
+  if ((e.mad || 0) > 0.6 && (e.hopY || 0) > 0) { e.mad = Math.max(e.mad, 1.6); return; }
+  const first = !(e.mad > 0); e.mad = 2.2; e.hopV = 7; e.hopY = Math.max(0.01, e.hopY || 0); e.hops = 3; e.moving = false;
+  if (first || Math.random() < 0.25) { bubble(g, pick(SOAK_LINES[t.type]), 2.2, 'mad'); stat('soaked'); if (t.type !== 'sacred' && Math.random() < 0.5) sfx(t.type === 'cow' ? 'moo' : t.type === 'farmer' ? 'hurt' : 'baa'); }
+}
+function updateSoaked(dt) {
+  for (const t of soakList) {
+    const e = t.ent, g = t.g; if (!(e.mad > 0) && !(e.hopY > 0)) continue;
+    e.mad = Math.max(0, (e.mad || 0) - dt);
+    if (e.hopY > 0 || e.hopV > 0) { e.hopV -= 32 * dt; e.hopY = Math.max(0, e.hopY + e.hopV * dt); if (e.hopY === 0) { if (--e.hops > 0 && e.mad > 0) e.hopV = 5.5; else e.hopV = 0; } }
+    g.position.y = e.hopY || 0;
+    if (e.mad > 0) { g.rotation.y = turnTo(g.rotation.y, Math.atan2(px() - g.position.x, pz() - g.position.z), Math.min(1, dt * 10)); g.rotation.z = Math.sin(elapsed * 38) * 0.12 * Math.min(1, e.mad); e.moving = false; if (Math.random() < dt * 3) burst('sparkle', g.position.x, g.position.y + t.h + 0.3, g.position.z, 1, 0xff5d6c); }
+    else g.rotation.z = 0;
   }
 }
 
@@ -1110,7 +1143,7 @@ function toggleCarry() {
 let last = performance.now(), titleAng = 0, zoom = 1, uiT = 0, mmT = 0, cardT = 0;
 const camTarget = new THREE.Vector3();
 function update(dt) {
-  updateTime(dt); updatePlayer(dt); updateCows(dt); updateSheep(dt); updateTownsfolk(dt); updateWorld(dt);
+  updateTime(dt); updatePlayer(dt); updateCows(dt); updateSheep(dt); updateTownsfolk(dt); updateSoaked(dt); updateWorld(dt);
   if (shootHeld) shoot();
   updateKittens(dt); updateProjs(dt); linkStream(); updatePuddles(dt); updateCaveFx(dt);
   autosaveT += dt; if (autosaveT > 25) { autosaveT = 0; saveGame(true); }

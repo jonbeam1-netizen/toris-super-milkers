@@ -314,3 +314,11 @@ const FOLK_LINES = ["Praise the Great Spindle!", "Baa-lessed be the whitest flee
   "One strand of yarn, one spark of shield.", "Is that Tori? THE Tori?", "I heard Tori squirts kittens with a strawberry cow!", "Baa-utiful day."];
 const FOLK_SAD = ["The Spindle is still... I'm scared.", "Who will feed the Spindle?", "Without yarn the shield will fade!"];
 const FOLK_PANIC = ["Kittens in the city! Eek!", "Hide the yarn!", "Save us, Tori!"];
+
+/* What people yell when Tori squirts them with milk */
+const SOAK_LINES = {
+  sheep: ["Baa! RUDE!", "I JUST washed this fleece!", "Hey! Not cool, Tori!", "My robe is RUINED!", "Ugh, now I smell like a milkshake!", "The Great Sheep saw that!", "BAA-D MANNERS!", "Why is it warm?!"],
+  cow: ["Well I never!", "Dearie! That's MY milk!", "Moo-ve that cow away from me!", "This is a brand new scarf!"],
+  farmer: ["Tori! Seriously?!", "Ack! Cold milk!", "Is this how you flirt?!", "My hair!!", "I'm telling Granny!", "...Okay that was a little funny. STILL MAD."],
+  sacred: ["Baaaa!!", "*offended holy baa*", "Blasphemoo!"],
+};
