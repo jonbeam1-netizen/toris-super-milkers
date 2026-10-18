@@ -454,13 +454,25 @@ function updatePersist() {
 /* ---------- Minimap ---------- */
 const mm = $('#minimap'), mmx = mm.getContext('2d');
 let _mmForest = null;
+/* The map shows the forest as one even blanket of trees: it hides trails, clearings and animals */
 function minimapForest(S, tx, tz, sc) {
   if (_mmForest && _mmForest.width === S) return _mmForest;
   const c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
-  x.fillStyle = '#9edb7a'; x.fillRect(0, 0, S, S);
-  const r = Math.max(1.6, 3.4 * sc);
-  for (const [a, b] of W.treePts || []) { x.fillStyle = '#3f8f4a'; x.beginPath(); x.arc(tx(a), tz(b), r, 0, TAU); x.fill(); }
-  for (const [a, b] of W.purplePts || []) { x.fillStyle = '#6e559e'; x.beginPath(); x.arc(tx(a), tz(b), r, 0, TAU); x.fill(); }
+  x.fillStyle = '#3f8f4a'; x.fillRect(0, 0, S, S);
+  const r = Math.max(1.5, S / 95), step = r * 1.5;
+  for (let py = 0; py < S; py += step) for (let pxx = 0; pxx < S; pxx += step) {
+    const wx = pxx / sc - 195, east = wx > 118;
+    x.fillStyle = east ? (Math.random() < 0.5 ? '#6e559e' : '#7d64ad') : (Math.random() < 0.5 ? '#4fa058' : '#357f41');
+    x.beginPath(); x.arc(pxx + Math.random() * r, py + Math.random() * r, r, 0, TAU); x.fill();
+  }
+  // known places only: the farm, Buttercup Hollow, the main road, the castle and the cave road
+  x.fillStyle = '#9edb7a';
+  x.fillRect(tx(-66), tz(18), (66 + 70) * sc, (120 - 18) * sc);
+  x.fillRect(tx(-136), tz(28), (136 - 58) * sc, (120 - 28) * sc);
+  x.fillRect(tx(-9), tz(-45), 18 * sc, 75 * sc);
+  x.fillRect(tx(8), tz(-25), (165 - 8) * sc, 10 * sc);
+  x.beginPath(); x.arc(tx(C.x), tz(C.z), (DOME_R + 6) * sc, 0, TAU); x.fill();
+  x.beginPath(); x.arc(tx(CAVE_DOOR.x + 8), tz(CAVE_DOOR.z), 16 * sc, 0, TAU); x.fill();
   return (_mmForest = c);
 }
 function drawMinimap() {
