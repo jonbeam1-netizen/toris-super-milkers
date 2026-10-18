@@ -233,11 +233,46 @@ function noise(dur, vol = 0.1, freq = 1500) {
   const s = AC.createBufferSource(); s.buffer = b; const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq;
   const g = AC.createGain(); g.gain.value = vol; s.connect(f); f.connect(g); g.connect(MASTER); s.start();
 }
+/* A proper "mmm-OOO": sawtooth voice through a lowpass that opens like a mouth, with a little wobble */
+let _lastMoo = 0;
+function moo(vol = 1, pitch = 1) {
+  if (!AC || muted) return;
+  _lastMoo = performance.now();
+  const t0 = AC.currentTime, dur = 0.85 + Math.random() * 0.35, f0 = 118 * pitch * (0.96 + Math.random() * 0.08);
+  const o = AC.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(f0 * 0.9, t0); o.frequency.linearRampToValueAtTime(f0 * 1.12, t0 + dur * 0.35); o.frequency.linearRampToValueAtTime(f0 * 0.8, t0 + dur);
+  const lfo = AC.createOscillator(), lg = AC.createGain(); lfo.frequency.value = 5 + Math.random() * 1.5; lg.gain.value = f0 * 0.025; lfo.connect(lg); lg.connect(o.frequency);
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 7;
+  lp.frequency.setValueAtTime(280, t0); lp.frequency.linearRampToValueAtTime(950, t0 + dur * 0.35); lp.frequency.linearRampToValueAtTime(360, t0 + dur);
+  const g = AC.createGain(), v = 0.1 * vol;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.12); g.gain.setValueAtTime(v, t0 + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t0); lfo.start(t0); o.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
+}
+/* Only moo if no cow has mooed for a while, so it never gets annoying */
+function tryMoo(vol, pitch, minGapMs = 4500) { if (performance.now() - _lastMoo < minGapMs) return false; moo(vol, pitch); return true; }
+const _cowPitch = { classic: 1, choc: 0.9, straw: 1.15, blueberry: 1.05, banana: 1.1, orange: 1.12, almond: 0.95, cookie: 0.97, mochi: 1.28, mint: 1.08, moon: 0.84, gold: 1.0, super: 1.32 };
+function cowPitch(d) { let h = 0; for (const ch of (d.name || '')) h = (h * 31 + ch.charCodeAt(0)) % 997; return (_cowPitch[d.type] || 1) * (0.95 + (h % 10) / 100); }
+/* Wet, squishy squirt: a sweeping bandpass "psssh", a low squelch and the odd droplet blip */
+let _noiseBuf = null;
+function squirtGrain(vol = 1) {
+  if (!AC || muted) return;
+  if (!_noiseBuf) { const n = AC.sampleRate; _noiseBuf = AC.createBuffer(1, n, AC.sampleRate); const d = _noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+  const t0 = AC.currentTime, dur = 0.14;
+  const src = AC.createBufferSource(); src.buffer = _noiseBuf;
+  const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 3.5; bp.frequency.setValueAtTime(2300 + Math.random() * 500, t0); bp.frequency.exponentialRampToValueAtTime(800 + Math.random() * 300, t0 + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.11 * vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp); bp.connect(g); g.connect(MASTER); src.start(t0, Math.random() * 0.8, dur + 0.02);
+  const sq = AC.createOscillator(), sg = AC.createGain(), d0 = t0 + Math.random() * 0.04; sq.type = 'sine';
+  sq.frequency.setValueAtTime(240 + Math.random() * 80, d0); sq.frequency.exponentialRampToValueAtTime(70, d0 + 0.08);
+  sg.gain.setValueAtTime(0.0001, d0); sg.gain.exponentialRampToValueAtTime(0.07 * vol, d0 + 0.01); sg.gain.exponentialRampToValueAtTime(0.0001, d0 + 0.09);
+  sq.connect(sg); sg.connect(MASTER); sq.start(d0); sq.stop(d0 + 0.12);
+  if (Math.random() < 0.3) tone(rand(900, 1300), 0.04, 'sine', 0.02 * vol, rand(1500, 2100), Math.random() * 0.08);
+}
 const SFX = {
-  moo: () => { tone(175, 0.6, 'sawtooth', 0.06, 100); tone(88, 0.6, 'sine', 0.06, 70); },
+  moo: () => moo(1, 1),
   baa: () => { tone(520, 0.12, 'square', 0.035, 480); tone(480, 0.32, 'square', 0.035, 400, 0.12); },
   splash: () => noise(0.14, 0.08, 1900),
-  squirt: () => { noise(0.08, 0.06, 2600); tone(900, 0.06, 'sine', 0.03, 1400); },
+  squirt: () => squirtGrain(1),
   coin: () => { tone(988, 0.08, 'square', 0.04); tone(1319, 0.16, 'square', 0.04, null, 0.08); },
   level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.07, null, i * 0.09)),
   meow: () => { tone(650, 0.12, 'sine', 0.07, 950); tone(950, 0.25, 'sine', 0.06, 520, 0.12); },
@@ -255,7 +290,7 @@ const SFX = {
 };
 function sfx(n) {
   if (!AC || muted) return;
-  const now = performance.now(), gap = n === 'squirt' ? 170 : n === 'boom' ? 300 : 90; if (now - (_sfxLast[n] || 0) < gap) return; _sfxLast[n] = now;
+  const now = performance.now(), gap = n === 'squirt' ? 95 : n === 'boom' ? 300 : 90; if (now - (_sfxLast[n] || 0) < gap) return; _sfxLast[n] = now;
   try { SFX[n] && SFX[n](); } catch (e) { }
 }
 

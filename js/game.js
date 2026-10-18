@@ -188,11 +188,11 @@ function milkCow(e) {
   c.cd = T.cd * 0.75 * (c.happy < 25 ? 2 : 1); c.happy = clamp(c.happy - 5, 0, 100);
   stat('milked'); addXP(3 + Math.floor(MILK[mk].price / 8));
   floatText(e.g.position.x, 3, e.g.position.z, `+${got} ${MILK[mk].name}`, 'milk');
-  burst('milk', e.g.position.x, 1, e.g.position.z, 10, MILK[mk].hex); sfx('moo'); e.squash = 0.4;
+  burst('milk', e.g.position.x, 1, e.g.position.z, 10, MILK[mk].hex); tryMoo(1, cowPitch(c), 1200); e.squash = 0.4;
   if (got < n) toast('Bucket full! Some milk spilled.');
 }
-function feedHay(e) { if (state.inv.hay <= 0) return; state.inv.hay--; e.d.happy = clamp(e.d.happy + 30, 0, 100); burst('heart', e.g.position.x, 2.5, e.g.position.z, 5); floatText(e.g.position.x, 3, e.g.position.z, 'Munch munch!', 'love'); sfx('moo'); }
-function petCow(e) { if (e.d.petCd > 0) return; e.d.petCd = 15; e.d.happy = clamp(e.d.happy + 12, 0, 100); burst('heart', e.g.position.x, 2.5, e.g.position.z, 4); sfx('moo'); addXP(1); }
+function feedHay(e) { if (state.inv.hay <= 0) return; state.inv.hay--; e.d.happy = clamp(e.d.happy + 30, 0, 100); burst('heart', e.g.position.x, 2.5, e.g.position.z, 5); floatText(e.g.position.x, 3, e.g.position.z, 'Munch munch!', 'love'); tryMoo(1, cowPitch(e.d), 1200); }
+function petCow(e) { if (e.d.petCd > 0) return; e.d.petCd = 15; e.d.happy = clamp(e.d.happy + 12, 0, 100); burst('heart', e.g.position.x, 2.5, e.g.position.z, 4); tryMoo(1, cowPitch(e.d), 1200); addXP(1); }
 function feedSuper(e) {
   if (!(state.inv.goods.super > 0)) return;
   state.inv.goods.super--; e.d.super = (e.d.super || 0) + SUPER_CHARGES;
@@ -204,7 +204,7 @@ function pickUpCow(e) {
   e.following = false;
   if (player.carrying) putDownCow();
   e.carried = true; e.returning = false; e.moving = false; player.carrying = e; e.g.scale.setScalar(0.62);
-  sfx('pickup'); sfx('moo'); floatText(e.g.position.x, 3, e.g.position.z, 'Moo?!', 'milk');
+  sfx('pickup'); tryMoo(1, cowPitch(e.d), 800); floatText(e.g.position.x, 3, e.g.position.z, 'Moo?!', 'milk');
   const spec = e.d.super > 0 ? SUPER_SHOT : MILK[COWS[e.d.type].milk].shot;
   toast(`Holding ${e.d.name}. Hold F or the mouse to squirt: ${spec.desc}.`);
 }
@@ -540,7 +540,8 @@ function shoot() {
   else cow.udder = Math.max(0, cow.udder - STREAM_DT);
   cow.udderIdle = 0; cow.squash = 0.12;
   sfx('squirt');
-  if (Math.random() < 0.01) sfx('moo');
+  const startNew = elapsed - (player.lastSquirt || -9) > 1.0; player.lastSquirt = elapsed;
+  if (startNew ? Math.random() < 0.65 : Math.random() < 0.02) tryMoo(0.9, cowPitch(cow.d), startNew ? 2500 : 6000);
 }
 function spawnProj(x, y, z, ang, target, sh, dmgScale, lane = 0) {
   const spec = sh.spec, isSuper = sh.key === 'super';
@@ -1338,7 +1339,7 @@ function interact() { const a = cardActions[0]; if (a && !a.disabled) { a.fn(); 
 function jump() {
   if (!running || paused || (player.jy || 0) > 0.05) return;
   player.jvy = 10.5; player.jy = 0.01; sfx('pickup');
-  if (player.carrying && Math.random() < 0.3) sfx('moo');
+  if (player.carrying && Math.random() < 0.3) tryMoo(0.8, cowPitch(player.carrying.d), 3000);
 }
 const herdFollowers = () => cowEnts.filter(e => e.following);
 function toggleHerd() {
@@ -1384,7 +1385,7 @@ function herdMove(e, dt) {
   } else if (e.atk <= 0) {
     let best = null, bd = 15;
     for (const k of kittens) { if (k.state !== 'move' || k.cave !== player.inCave) continue; const kd = dist2(pos.x, pos.z, k.g.position.x, k.g.position.z); if (kd < bd) { bd = kd; best = k; } }
-    if (best) { e.target = best; e.streamT = 0.6; e.atk = 1.2 + rand(0, 0.3); } else e.atk = 0.4;
+    if (best) { e.target = best; e.streamT = 0.6; e.atk = 1.2 + rand(0, 0.3); if (Math.random() < 0.25) tryMoo(0.6, cowPitch(e.d), 6000); } else e.atk = 0.4;
   }
 }
 function toggleCarry() {
@@ -1398,8 +1399,17 @@ function toggleCarry() {
 /* ---------- Main loop ---------- */
 let last = performance.now(), titleAng = 0, zoom = 1, uiT = 0, mmT = 0, cardT = 0;
 const camTarget = new THREE.Vector3();
+let ambMooT = 6;
+function ambientMoos(dt) {
+  ambMooT -= dt; if (ambMooT > 0) return;
+  ambMooT = rand(8, 15);
+  const near = cowEnts.filter(e => !e.carried && !e.fusing && !(e.ko > 0) && dist2(e.g.position.x, e.g.position.z, px(), pz()) < 45);
+  if (!near.length) return;
+  const e = pick(near), d = dist2(e.g.position.x, e.g.position.z, px(), pz());
+  if (tryMoo(clamp(1.05 - d / 45, 0.2, 1), cowPitch(e.d), 6000)) { e.squash = 0.35; e.m.head.rotation.x = -0.3; }
+}
 function update(dt) {
-  updateTime(dt); updatePlayer(dt); updateCows(dt); updateSheep(dt); updateTownsfolk(dt); updateSoaked(dt); updateWorld(dt); updateWild(dt); updateForestKittens(dt); updateFusion(dt); updateEndless(dt);
+  updateTime(dt); updatePlayer(dt); ambientMoos(dt); updateCows(dt); updateSheep(dt); updateTownsfolk(dt); updateSoaked(dt); updateWorld(dt); updateWild(dt); updateForestKittens(dt); updateFusion(dt); updateEndless(dt);
   if (shootHeld) shoot();
   updateKittens(dt); updateProjs(dt); linkStream(); updatePuddles(dt); updateCaveFx(dt);
   autosaveT += dt; if (autosaveT > 25) { autosaveT = 0; saveGame(true); }
