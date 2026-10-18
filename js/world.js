@@ -338,11 +338,11 @@ function forestFree(x, z, pad = 0) {
   if (nearPolyline(x, z, STREAM, 4 + pad)) return false;
   return true;
 }
-/* Keep a wide-open glade around every wild animal so trees never hide it, with extra room on the camera side (south) */
+/* Keep a small pocket around every wild animal so no tree sits on top of it, with a little extra room on the camera side (south) */
 let _wildSpots = null;
 function nearWildSpot(x, z) {
   if (!_wildSpots) { _wildSpots = []; for (const c of CLEARINGS) c.animals.forEach((a, i) => _wildSpots.push(wildSpot(c.id + '-' + i, c))); }
-  for (const p of _wildSpots) { const dx = (x - p.x) / 9, dz = (z - p.z) / (z > p.z ? 16 : 8); if (dx * dx + dz * dz < 1) return true; }
+  for (const p of _wildSpots) { const dx = (x - p.x) / 4.6, dz = (z - p.z) / (z > p.z ? 7.5 : 3.8); if (dx * dx + dz * dz < 1) return true; }
   return false;
 }
 function buildWoods() {

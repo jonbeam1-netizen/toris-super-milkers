@@ -117,16 +117,28 @@ function updateTrapBubbles() {
 }
 /* Each wild animal hides at its own spot deep among the trees, somewhere in its region.
    The spot is seeded by its id, so it stays put between visits. */
-function wildSpot(id, c) {
-  let h = 2166136261; for (const ch of id) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
-  for (let t = 0; t < 400; t++) {
-    const a = rnd() * TAU, r = 14 + rnd() * 42, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
-    if (x < -188 || x > 188 || z < -172 || z > 132) continue;
-    if (forestFree(x, z, 2)) return { x, z };
-  }
-  return { x: c.x, z: c.z };
+let _spotCache = null;
+function computeWildSpots() {
+  _spotCache = {}; const placed = [];
+  for (const c of CLEARINGS) c.animals.forEach((an, i) => {
+    const id = wildId(c, i);
+    let h = 2166136261; for (const ch of id) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
+    let best = null;
+    for (let t = 0; t < 1200 && !best; t++) {
+      const minSep = t < 400 ? 36 : t < 800 ? 26 : 16;
+      const a = rnd() * TAU, r = 12 + rnd() * 40, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
+      if (x < -186 || x > 186 || z < -170 || z > 130) continue;
+      if (Math.abs(c.x) < 70 && Math.sign(x) !== Math.sign(c.x)) continue; // stay on the side of the road the hint says
+      if (!forestFree(x, z, 3)) continue;
+      if (placed.some(p => dist2(p.x, p.z, x, z) < minSep)) continue;
+      best = { x, z };
+    }
+    best = best || { x: c.x, z: c.z }; placed.push(best); _spotCache[id] = best;
+  });
 }
+/* Each wild animal hides alone at its own spot, far from the others. The spot is seeded by its id, so it stays put. */
+function wildSpot(id, c) { if (!_spotCache) computeWildSpots(); return _spotCache[id] || { x: c.x, z: c.z }; }
 function makeWild(species, type, id, home) {
   const m = species === 'cow' ? makeCow(type) : makeSheep(type);
   if (species === 'sheep') {
@@ -204,10 +216,20 @@ function spawnForestKitten(type, x, z, guard) {
   k.leash = guard ? 22 : 20; k.aggro = guard ? 12 : 9; k.wx = x; k.wz = z; k.wt = 0;
   return k;
 }
-function spawnGuardsFor(w) {
-  const c = CLEARINGS.find(c => w.id.startsWith(c.id + '-')); if (!c || !c.guards) return;
-  const per = Math.ceil(c.guards / c.animals.length);
-  for (let j = 0; j < per; j++) spawnForestKitten(c.guardTypes ? pick(c.guardTypes) : pick(['tabby', 'tabby', 'ginger']), w.home.x + rand(-4, 4), w.home.z + rand(-4, 4), true).cid = w.id;
+/* Most wild animals are guarded: none for the first finds, more and tougher kittens for the rare late ones */
+const GUARDS = { cow: { choc: 0, straw: 1, blueberry: 1, banana: 2, orange: 0, almond: 2, cookie: 3, mochi: 3, mint: 4, moon: 5, gold: 6 },
+  sheep: { mud: 0, meadow: 1, cloud: 2, snow: 3 } };
+function guardCount(w) { return (GUARDS[w.species] || {})[w.type] || 0; }
+function guardType(w) {
+  const c = CLEARINGS.find(c => w.id.startsWith(c.id + '-'));
+  if (c && c.guardTypes && Math.random() < 0.6) return pick(c.guardTypes);
+  const tier = w.species === 'cow' ? COW_ORDER.indexOf(w.type) : SHEEP_TYPES.indexOf(w.type) * 2;
+  return kittenType(3 + tier * 3);
+}
+function spawnGuardsFor(w, n) {
+  if (w.cave) return;
+  n = n === undefined ? guardCount(w) : n;
+  for (let j = 0; j < n; j++) { const a = rand(0, TAU), r = rand(3.5, 6.5); spawnForestKitten(guardType(w), w.home.x + Math.cos(a) * r, w.home.z + Math.sin(a) * r, true).cid = w.id; }
 }
 function spawnForestKittens() {
   for (const w of wilds) if (!w.locked && !w.cave) spawnGuardsFor(w);
@@ -224,7 +246,20 @@ function spawnRoamer(farFromPlayer) {
     return spawnForestKitten(type, x, z, false);
   }
 }
+let guardT = 0;
 function updateForestKittens(dt) {
+  // guards creep back to their posts while you're away
+  guardT -= dt;
+  if (guardT <= 0) {
+    guardT = 5;
+    for (const w of wilds) {
+      if (w.locked || w.follow || w.cave) continue;
+      w.respawnT = (w.respawnT || 0) - 5;
+      if (w.respawnT > 0 || dist2(px(), pz(), w.home.x, w.home.z) < 45) continue;
+      if (kittens.filter(k => k.guard && k.state === 'move' && k.cid === w.id).length >= guardCount(w)) continue;
+      w.respawnT = 40; spawnGuardsFor(w, 1);
+    }
+  }
   roamT -= dt;
   if (roamT <= 0) { roamT = 14; if (kittens.filter(k => k.roamer && k.state === 'move').length < 20 + state.quest.i + (state.flags.endless ? 20 : 0)) spawnRoamer(true); }
 }
