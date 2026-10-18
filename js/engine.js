@@ -209,7 +209,7 @@ function updateFloats(dt) {
 
 /* ---------- Audio (tiny synth, starts after first click) ---------- */
 let AC = null, muted = false;
-try { muted = localStorage.getItem('tsm.mute') === '1'; } catch (e) { }
+try { localStorage.removeItem('tsm.mute'); } catch (e) { } // sound always starts ON; M mutes for this session only
 let MASTER = null; const _sfxLast = {};
 function audioInit() {
   if (AC) { if (AC.state === 'suspended' && !muted) AC.resume(); return; }

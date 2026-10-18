@@ -582,7 +582,7 @@ function initUI() {
   $('#t-cont').onclick = () => { audioInit(); startGame(loadSave()); };
   $('#t-help').onclick = () => { $('#t-howto').hidden = !$('#t-howto').hidden; };
 }
-function toggleMute() { muted = !muted; try { localStorage.setItem('tsm.mute', muted ? '1' : '0'); } catch (e) { } updateMuteBtn(); }
+function toggleMute() { muted = !muted; if (AC) { if (muted) AC.suspend(); else AC.resume(); } updateMuteBtn(); }
 function updateMuteBtn() { $('#m-sound').textContent = muted ? 'Sound off' : 'Sound on'; $('#m-sound').setAttribute('aria-pressed', String(!muted)); }
 function showTitle(hasSave) { $('#title').hidden = false; $('#hud').hidden = true; $('#t-cont').hidden = !hasSave; }
 function hideTitle() { $('#title').hidden = true; $('#hud').hidden = false; }
