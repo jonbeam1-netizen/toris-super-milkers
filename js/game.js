@@ -1353,12 +1353,19 @@ function toggleHerd() {
 }
 function herdMove(e, dt) {
   const list = herdFollowers(), i = list.indexOf(e), row = Math.floor(i / 4), col = (i % 4) - 1.5;
-  const back = 3.4 + row * 2.6, side = col * 2.4, f = player.face;
+  // the herd's formation follows a slowly-turning heading, so quick turns and aiming don't swing every cow sideways
+  if (i === 0) player.herdFace = player.herdFace === undefined ? player.face : turnTo(player.herdFace, player.face, Math.min(1, dt * 1.6));
+  const back = 3.4 + row * 2.6, side = col * 2.4, f = player.herdFace === undefined ? player.face : player.herdFace;
   const tx = px() - Math.sin(f) * back + Math.cos(f) * side, tz = pz() - Math.cos(f) * back - Math.sin(f) * side;
   const pos = e.g.position, dx = tx - pos.x, dz = tz - pos.z, d = Math.hypot(dx, dz);
   if (d > 70) { pos.set(tx, 0, tz); return; }
   let mv = false;
-  if (d > 0.7) { const sp = Math.min(13, d * 2.2) * dt; pos.x += dx / d * sp; pos.z += dz / d * sp; mv = true; if (!(e.streamT > 0)) e.g.rotation.y = turnTo(e.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); }
+  if (d > 0.7) {
+    const sp = Math.min(13, d * 2.2) * dt; pos.x += dx / d * sp; pos.z += dz / d * sp; mv = sp / dt > 1.2;
+    // a cow always faces where she walks; she only turns toward a kitten when standing still
+    if (mv) e.g.rotation.y = turnTo(e.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 7));
+  }
+  e.walking = mv;
   e.walk += mv ? dt * 12 : 0; const s = mv ? Math.sin(e.walk) * 0.5 : 0; e.m.legs.forEach((L, j) => L.rotation.x = (j === 0 || j === 3) ? s : -s);
   pos.y = mv ? Math.abs(Math.sin(e.walk)) * 0.12 : 0;
   const sq = Math.max(0, e.squash); e.g.scale.set(0.9 * (1 + sq * 0.3), 0.9 * (1 - sq * 0.3), 0.9);
@@ -1366,7 +1373,8 @@ function herdMove(e, dt) {
   e.atk = (e.atk || 0) - dt;
   if (e.streamT > 0 && e.target && e.target.state === 'move') {
     e.streamT -= dt; e.shotT = (e.shotT || 0) - dt;
-    const k = e.target, ang = Math.atan2(k.g.position.x - pos.x, k.g.position.z - pos.z); e.g.rotation.y = ang;
+    const k = e.target, ang = Math.atan2(k.g.position.x - pos.x, k.g.position.z - pos.z);
+    if (!e.walking) e.g.rotation.y = turnTo(e.g.rotation.y, ang, Math.min(1, dt * 10));
     if (e.shotT <= 0) {
       e.shotT = STREAM_DT;
       const isSup = e.d.type === 'super' || e.d.super > 0, mk = COWS[e.d.type].milk, spec = isSup ? SUPER_SHOT : MILK[mk].shot;
