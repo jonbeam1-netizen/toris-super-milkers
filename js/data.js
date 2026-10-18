@@ -118,7 +118,7 @@ const KITTENS = {
   shadow:  { name: 'Shadow Kitten', hp: 4, speed: 5.2, dmg: 1.8, color: 0x2c2a3c, stripe: 0x14131d, eye: 0xd27bff, scale: 1, coins: [6, 10] },
   siamese: { name: 'Siamese Schemer', hp: 6, speed: 5.6, dmg: 1.4, color: 0xf3e6cf, stripe: 0x5a4034, eye: 0x5fd3ff, scale: 1.1, coins: [7, 12] },
   duchess: { name: 'Duchess Whiskerella', hp: 70, speed: 3.4, dmg: 6, color: 0xf5f0ff, stripe: 0xcfa8ff, eye: 0xff4fa3, scale: 2.7, coins: [250, 300], boss: true, crown: true },
-  clawdius:{ name: 'King Clawdius, the Cat-astrophe', hp: 1100, speed: 4.2, dmg: 2, color: 0x3d3350, stripe: 0x1f1830, eye: 0xff3b6b, scale: 4.6, coins: [1500, 1500], boss: true, crown: true, cave: true },
+  clawdius:{ name: 'King Clawdius, the Cat-astrophe', hp: 1800, speed: 4.2, dmg: 2, color: 0x3d3350, stripe: 0x1f1830, eye: 0xff3b6b, scale: 4.6, coins: [1500, 1500], boss: true, crown: true, cave: true },
 };
 
 const FAITH = [0, 15, 50, 120, 250, 450];
