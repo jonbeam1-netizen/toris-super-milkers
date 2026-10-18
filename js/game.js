@@ -749,6 +749,15 @@ function hurtPlayer(n, src) {
 function faint() {
   if (player.dead) return;
   player.dead = true; shootHeld = false;
+  if (player.inCave) {
+    // beaten by King Clawdius: tossed out of the cave with low health, nothing else lost
+    fadeScreen(() => {
+      leaveCave(true); player.vx = player.vz = 0; player.inv = 3; player.dead = false;
+      state.hearts = Math.min(2, maxHearts());
+      toast('King Clawdius knocked you out and tossed you out of his cave! Heal up (drink milk or rest at home) and try again.', 'bad');
+    });
+    return;
+  }
   fadeScreen(() => {
     if (player.carrying) putDownCow();
     if (player.inCave) leaveCave(true);
