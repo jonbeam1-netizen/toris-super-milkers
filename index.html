@@ -66,6 +66,9 @@ kbd { font: 700 11px/1 var(--body); background: var(--wool-2); border: 2px solid
 #tracker { position: fixed; top: calc(var(--sat) + 200px); left: max(10px, var(--sal)); width: 240px; padding: 9px 12px; z-index: 4; }
 #tracker b { font: 600 15px var(--display); display: block; text-wrap: balance; }
 .goal { font: 800 10px var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--cocoa-soft); border-bottom: 2px dashed #ead9c4; padding-bottom: 4px; margin-bottom: 4px; }
+.tnext { margin-top: 5px; padding-top: 5px; border-top: 2px dashed #ead9c4; font: 600 12px/1.35 var(--body); color: var(--cocoa); }
+.bubble.trapb { background: #ffe9f1; border-color: #c2337a; color: var(--cocoa); white-space: normal; width: max-content; max-width: 220px; text-align: center; font-size: 12px; transition: opacity .3s; }
+.bubble.trapb::after { background: #ffe9f1; border-color: #c2337a; }
 .thint { margin-top: 4px; font: 600 12px/1.35 var(--body); color: var(--cocoa-soft); }
 .eyebrow { font: 700 10px var(--body); text-transform: uppercase; letter-spacing: .12em; color: var(--berry); }
 .tline { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 13px; }
@@ -288,12 +291,12 @@ body.touch #weapon small { display: none; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/data.js?v=18"></script>
-<script src="js/engine.js?v=18"></script>
-<script src="js/models.js?v=18"></script>
-<script src="js/world.js?v=18"></script>
-<script src="js/explore.js?v=18"></script>
-<script src="js/ui.js?v=18"></script>
-<script src="js/game.js?v=18"></script>
+<script src="js/data.js?v=23"></script>
+<script src="js/engine.js?v=23"></script>
+<script src="js/models.js?v=23"></script>
+<script src="js/world.js?v=23"></script>
+<script src="js/explore.js?v=23"></script>
+<script src="js/ui.js?v=23"></script>
+<script src="js/game.js?v=23"></script>
 </body>
 </html>

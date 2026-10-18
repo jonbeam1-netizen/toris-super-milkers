@@ -57,7 +57,8 @@ function openMarket(tab = 'sell') {
   const sellRow = (label, sw, count, price, fn) => `<div class="row"><span class="nm">${sw}${label} <small>×${count}</small></span><span class="pr">${price}c each</span>${B('Sell 1', () => { fn(1); refreshModal(); }, { disabled: !count })}${B('Sell all', () => { fn(count); refreshModal(); }, { disabled: !count, cls: 'ghost' })}</div>`;
   const sold = n => { if (n > 0) { sfx('coin'); stat('sold', 1); } };
   showModal(() => {
-    const tabs = ['sell', 'animals', 'supplies', 'upgrades'].map(k => B(k[0].toUpperCase() + k.slice(1), () => { t = k; refreshModal(); }, { cls: 'tab' + (t === k ? ' on' : '') })).join('');
+    if (t === 'animals') t = 'sell';
+    const tabs = ['sell', 'supplies', 'upgrades'].map(k => B(k[0].toUpperCase() + k.slice(1), () => { t = k; refreshModal(); }, { cls: 'tab' + (t === k ? ' on' : '') })).join('');
     let body = '';
     if (t === 'sell') {
       let any = false;
@@ -67,17 +68,6 @@ function openMarket(tab = 'sell') {
       for (const r of RECIPES) { const c = state.inv.goods[r.key] || 0; if (!c || !r.sell) continue; any = true; body += sellRow(r.name, swatch('#ffb3d9'), c, r.sell, n => { state.inv.goods[r.key] -= n; state.coins += n * r.sell; sold(n); }); }
       if (!any) body = '<p class="empty">Nothing to sell yet. Milk your cows and shear your sheep, then come back!</p>';
       else body = '<p class="hint">Yarn sells well, but the shield needs it too.</p>' + body;
-    } else if (t === 'animals') {
-      body += `<p class="hint">Moolissa sells copies of any breed you have already found in the forest.</p><h3>Cows <small>${state.cows.length}/${animalCap()} in your pasture</small></h3>`;
-      for (const [k, T] of Object.entries(COWS)) {
-        if (T.special) continue; const lock = !state.found.cows[k], full = state.cows.length >= animalCap(), M_ = MILK[T.milk];
-        body += `<div class="row tall"><span class="nm">${swatch(hexStr(T.body))}${T.name}<small>Makes ${M_.name} · Udder shot: ${M_.shot.desc}</small></span><span class="pr">${lock ? 'Not found yet' : T.price + 'c'}</span>${B(lock ? 'Find one in the wild' : full ? 'Barn full' : 'Buy', () => { state.coins -= T.price; const e = addCow(k); stat('bought'); toast(`${e.d.name} the ${T.name} joined your farm!`, 'good'); sfx('moo'); refreshModal(); }, { disabled: lock || full || state.coins < T.price })}</div>`;
-      }
-      body += `<h3>Sheep <small>${state.sheep.length}/${animalCap()} in your meadow</small></h3>`;
-      for (const [k, Br] of Object.entries(BREEDS)) {
-        const lock = !state.found.sheep[k], full = state.sheep.length >= animalCap();
-        body += `<div class="row tall"><span class="nm">${swatch(TIERS[tierOf(Br.base)].color)}${Br.name}<small>Natural whiteness ${Br.base} (${TIERS[tierOf(Br.base)].name})</small></span><span class="pr">${lock ? 'Not found yet' : Br.price + 'c'}</span>${B(lock ? 'Find one in the wild' : full ? 'Meadow full' : 'Buy', () => { state.coins -= Br.price; const s = { breed: k }; state.sheep.push(s); normSheep(s); spawnSheepEnt(s); stat('bought'); toast(`${s.name} the ${Br.name} joined your meadow!`, 'good'); sfx('baa'); refreshModal(); }, { disabled: lock || full || state.coins < Br.price })}</div>`;
-      }
     } else if (t === 'supplies') {
       body += `<div class="row tall"><span class="nm">${swatch('#f2cf6b')}Hay bundle ×5<small>Feed cows to make them happy. Happy cows give extra milk. You have ${state.inv.hay}.</small></span><span class="pr">12c</span>${B('Buy', () => { state.coins -= 12; state.inv.hay += 5; sfx('coin'); refreshModal(); }, { disabled: state.coins < 12 })}</div>`;
       body += `<div class="row tall"><span class="nm">${swatch('#5fcf6a')}Clover ×3<small>Sheep grow fleece faster and a little whiter. You have ${state.inv.clover}.</small></span><span class="pr">20c</span>${B('Buy', () => { state.coins -= 20; state.inv.clover += 3; sfx('coin'); refreshModal(); }, { disabled: state.coins < 20 })}</div>`;
@@ -135,6 +125,12 @@ function openQuests() {
   });
 }
 
+function nextCowLine() {
+  if (!state || state.quest.i < 1) return '';
+  const n = nextCowGoal(); if (!n) return '';
+  return `<div class="tnext">Next cow: <b>${esc(n.name)}</b> · ${esc(n.open ? `free to rescue, ${n.where}` : `trapped ${n.where}. ${n.why}`)}</div>`;
+}
+
 /* ---------- Victory ---------- */
 function showVictory() {
   showModal(() => `<header class="mh"><h2>You saved the Sheep-a-verse!</h2></header><div class="list">
@@ -147,9 +143,10 @@ function showVictory() {
 /* ---------- Herd Book ---------- */
 function openHerd() {
   showModal(() => {
-    const cowRows = COW_TYPES.map(k => {
+    const cowRows = ['classic'].concat(COW_ORDER).map(k => {
       const T = COWS[k], f = state.found.cows[k], own = state.cows.filter(c => c.type === k).length, home = homeOf('cow', k);
-      return `<div class="row tall"><span class="nm">${swatch(f ? hexStr(T.body) : '#d9cbb8')}${f ? T.name : '???'}<small>${f ? `Makes ${MILK[T.milk].name}. Shot: ${MILK[T.milk].shot.desc}` : home ? `Rumored to roam ${home.where}.` : 'Rumored to roam somewhere in the woods.'}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
+      const open = k === 'classic' || isUnlocked('cow', k);
+      return `<div class="row tall"><span class="nm">${swatch(f ? hexStr(T.body) : '#d9cbb8')}${f ? T.name : open ? T.name : '???'}<small>${f ? `Makes ${MILK[T.milk].name}. Shot: ${MILK[T.milk].shot.desc}` : open ? `Free to rescue! Roams ${home ? home.where : 'the woods'}.` : `Trapped. ${lockReason('cow', k)} to rescue it.`}</small></span><span class="pr">${own ? 'On farm ×' + own : f ? 'Found' : 'Missing'}</span></div>`;
     }).join('');
     const sheepRows = SHEEP_TYPES.map(k => {
       const Br = BREEDS[k], f = state.found.sheep[k], own = state.sheep.filter(c => c.breed === k).length, home = k === 'seraph' ? { name: 'King Clawdius\'s cage', where: 'deep in Catnap Cavern' } : homeOf('sheep', k);
@@ -157,7 +154,7 @@ function openHerd() {
     }).join('');
     const nc = COW_TYPES.filter(k => state.found.cows[k]).length, ns = SHEEP_TYPES.filter(k => state.found.sheep[k]).length;
     return `<header class="mh"><h2>Herd Book</h2>${B('Close', closeModal, { cls: 'ghost x' })}</header><div class="list">
-      <p class="hint">Wild cows and sheep hide deep among the trees, each on its own. Search the forest, befriend them with E, and lead them into your pasture or meadow. Bring all 12 cows home, then fuse them into the Super Milker at the crystal in town.</p>
+      <p class="hint">There is one cow of each kind. They hide deep among the trees, trapped until you rescue the one before them. Search the forest, befriend them with E, and lead them home. Bring all 12 cows home, then fuse them into the Super Milker at the crystal in town.</p>
       <h3>Cows <small>${nc}/12 found</small></h3>${cowRows}<h3>Sheep <small>${ns}/${SHEEP_TYPES.length} found</small></h3>${sheepRows}</div>`;
   });
 }
@@ -278,6 +275,11 @@ function cardFor(it) {
       return { title: F.name, sub: F.role + (r.status === 'sweet' ? ' · your sweetheart' : ''), sw: hexStr(F.look.shirt), hearts: r.aff,
         lines: [!r.met ? 'You haven\'t met yet. Say hi!' : confessionReady(k) ? 'They look nervous... they want to tell you something.' : problemAvailable(k) ? 'Has a problem only milk can fix.' : r.p < 4 ? `Next problem unlocks at ${r.p * 2} hearts.` : 'Spend time together to grow closer.'], acts };
     }
+    case 'trapped': {
+      const w = it.ent;
+      return { title: `${wildName(w)} (trapped)`, sub: `${TRAP_TEXT[w.trap][0].toUpperCase() + TRAP_TEXT[w.trap].slice(1)}`, sw: w.species === 'cow' ? hexStr(COWS[w.type].body) : TIERS[tierOf(BREEDS[w.type].base)].color,
+        lines: [`${lockReason(w.species, w.type)} to rescue it.`, 'Come back when you have. The trap will burst open on its own.'], acts: [] };
+    }
     case 'wild': {
       const w = it.ent, nm = wildName(w), isNew = w.species === 'cow' ? !state.found.cows[w.type] : !state.found.sheep[w.type], g = w.follow ? 0 : guardsAt(w);
       const info = w.species === 'cow' ? `Makes ${MILK[COWS[w.type].milk].name}. Udder shot: ${MILK[COWS[w.type].milk].shot.desc}` : `Natural whiteness ${BREEDS[w.type].base} (${TIERS[tierOf(BREEDS[w.type].base)].name} wool)`;
@@ -286,7 +288,7 @@ function cardFor(it) {
         acts: w.follow ? [{ key: 'E', label: 'Stay here', fn: () => stopFollow(w) }] : [{ key: 'E', label: w.caged ? 'Locked' : 'Befriend', fn: () => befriend(w), disabled: w.caged }] };
     }
     case 'sacred': return { title: 'Sacred Sheep', sub: 'Blessed flock of the Great Sheep', sw: '#fff6c9', lines: ['Perfectly white. Petting one brings a little faith.'], acts: [{ key: 'E', label: 'Pet', fn: () => petSacred(it.ent), disabled: it.ent.petCd > 0 }] };
-    case 'display': return { title: 'Cow for sale', sub: 'Moo Market display pen', sw: '#ff9fc0', lines: ['Moolissa has many breeds in stock.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('animals') }] };
+    case 'display': return { title: 'Show cow', sub: 'Moo Market display pen', sw: '#ff9fc0', lines: ['Just for show! Real cows can only be found in the wild.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('sell') }] };
     case 'spindle': {
       const sp = state.spindle, on = sp.momentum > 0;
       return { title: 'The Great Spindle', sub: on ? (sp.queue.length ? 'Spinning wool into yarn' : 'Turning slowly, waiting for wool') : 'STOPPED! Feed it wool', sw: '#c9b0ff',
@@ -295,13 +297,14 @@ function cardFor(it) {
     }
     case 'basket': return { title: 'Yarn Basket', sub: 'Fresh from the Great Spindle', sw: '#ff9fc0', lines: [`${basketTotal()} yarn waiting`], acts: [{ key: 'E', label: 'Collect yarn', fn: collectYarn, disabled: !basketTotal() }] };
     case 'heart': {
-      const fp = fusionCandidates(), have = COW_TYPES.filter(t => fp[t]).length, owned = state.cows.some(c => c.type === 'super'), acts = [];
-      if (!owned) acts.push({ key: 'E', label: canFuse() ? 'FUSE THE SUPER MILKER!' : `Fuse Super Milker (${have}/12 cows)`, fn: startFusion, disabled: !canFuse(), cls: canFuse() ? 'rainbow' : '' });
-      if (yarnTotal()) acts.push({ key: owned ? 'E' : '1', label: `Weave yarn from bag (${yarnTotal()})`, fn: weaveYarn });
-      return { title: 'Heart of the Shield', sub: 'The crystal that powers the force field', sw: '#7fe8ff',
+      const fp = fusionCandidates(), have = COW_TYPES.filter(t => fp[t]).length, pr = prismaEnt(), acts = [];
+      if (pr) acts.push({ key: 'E', label: 'Split the SUPER MILKER back into 12 cows', fn: splitSuperMilker, disabled: !canSplit() });
+      else acts.push({ key: 'E', label: canFuse() ? 'FUSE THE SUPER MILKER!' : `Fuse Super Milker (${have}/12 cows)`, fn: startFusion, disabled: !canFuse(), cls: canFuse() ? 'rainbow' : '' });
+      if (yarnTotal()) acts.push({ key: '1', label: `Weave yarn from bag (${yarnTotal()})`, fn: weaveYarn });
+      return { title: 'Heart of the Shield', sub: 'The crystal that powers the shield and fuses cows', sw: '#7fe8ff',
         bars: [{ label: `Shield ${Math.round(state.field.power)}/${maxPower()}`, v: state.field.power / maxPower(), cls: 'shield' }],
-        lines: [state.flags.breached ? 'The shield is DOWN. Feed wool to the Spindle: its yarn restarts the shield at 25 power.' : 'Yarn from the Great Spindle flows in here by itself. Whiter yarn adds more power.',
-          owned ? 'Prisma the Super Milker has been born!' : `Own all 12 kinds of cow and use this crystal to fuse them into the Super Milker (one of each kind fuses; extras stay). You have ${have}/12.`], acts };
+        lines: [state.flags.breached ? 'The shield is DOWN. Feed the Spindle wool: its yarn restarts the shield at 25 power.' : 'Yarn from the Great Spindle flows in here by itself.',
+          pr ? 'The SUPER MILKER holds all 12 of your cows. Split her any time; fuse them again whenever you like.' : `Bring all 12 kinds of cow and fuse them into the Super Milker. You have ${have}/12 here or at your farm.`], acts };
     }
     case 'temple': {
       const fl = faithLevel(), next = FAITH[fl + 1];
@@ -311,7 +314,7 @@ function cardFor(it) {
         acts: [{ key: 'E', label: 'Offer best wool', fn: () => offerWool(false), disabled: !woolTotal() }, { key: '1', label: 'Offer all wool', fn: () => offerWool(true), disabled: !woolTotal() }, { key: '2', label: `Offer all milk (${milkTotal()})`, fn: offerMilk, disabled: !milkTotal() }] };
     }
     case 'market': if (state.flags.breached) return { title: 'Moo Market (CLOSED)', sub: 'Moolissa is hiding from the kittens', sw: '#ff9fc0', lines: ['The market reopens when the shield is back up.'], acts: [] };
-      return { title: 'Moo Market', sub: 'Buy, sell, upgrade', sw: '#ff9fc0', lines: ['Sell milk, wool, yarn and treats. Buy cows, sheep and upgrades.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('sell') }, { key: '1', label: 'Buy animals', fn: () => openMarket('animals') }, { key: '2', label: 'Upgrades', fn: () => openMarket('upgrades') }] };
+      return { title: 'Moo Market', sub: 'Buy, sell, upgrade', sw: '#ff9fc0', lines: ['Sell milk, wool, yarn and treats. Buy supplies and upgrades. Cows can only be found in the wild.'], acts: [{ key: 'E', label: 'Open market', fn: () => openMarket('sell') }, { key: '1', label: 'Upgrades', fn: () => openMarket('upgrades') }] };
     case 'board': return { title: 'Bounty Board', sub: 'Optional requests for extra coins', sw: '#b98a5e', lines: [`${state.bounties.filter(b => !b.done).length} open bounties`], acts: [{ key: 'E', label: 'Read bounties', fn: openBoard }] };
     case 'hayloft': return { title: 'Hay Loft', sub: 'Free hay once a day', sw: '#f2cf6b', lines: [state.flags.hayDay === state.day ? 'Come back tomorrow for more.' : '3 bundles of hay are waiting.'], acts: [{ key: 'E', label: 'Take hay', fn: takeHay, disabled: state.flags.hayDay === state.day }] };
     case 'clover': return { title: 'Clover Patch', sub: 'Sheep snacks', sw: '#5fcf6a', lines: [state.flags.cloverT > 0 ? `Regrowing: ${Math.ceil(state.flags.cloverT)}s` : 'A lucky clover is ready.'], acts: [{ key: 'E', label: 'Pick clover', fn: pickClover, disabled: state.flags.cloverT > 0 }] };
@@ -383,7 +386,7 @@ function updateHUD() {
   let ch = CHAPTERS[0], chn = 1; CHAPTERS.forEach((c, i) => { if (state.quest.i >= c.from) { ch = c; chn = i + 1; } });
   tk.innerHTML = `<div class="goal">Goal: ${esc(q ? GOAL_TEXT : 'Survive the endless hordes!')}</div>
     <div class="eyebrow">${q ? `Chapter ${chn}/${CHAPTERS.length}: ${esc(ch.title)}` : 'After the story'}</div><b>${esc(title)}</b>
-    <div class="tline">${arrow}<span>${esc(line)}</span></div>${hint ? `<div class="thint">How: ${esc(hint)}</div>` : ''}`;
+    <div class="tline">${arrow}<span>${esc(line)}</span></div>${hint ? `<div class="thint">How: ${esc(hint)}</div>` : ''}${nextCowLine()}`;
   const cw = player.carrying;
   $('#b-cow').classList.toggle('on', !!cw);
 }
@@ -460,7 +463,7 @@ function updatePersist() {
   for (const pb of persistBubbles) {
     const n = npcEnts[pb.key], pos = n.g.position;
     if (player.inCave || !$('#modal').hidden || dist2(px(), pz(), pos.x, pos.z) > 55) { pb.el.style.opacity = 0; continue; }
-    const text = owned ? 'Prisma the Super Milker is ready! Carry her into Catnap Cavern!'
+    const text = owned ? 'The SUPER MILKER is ready! Carry her into Catnap Cavern!'
       : pb.key === 'granny' ? `Find all 12 kinds of cow (${have}/12), then use the crystal in town to fuse the Super Milker!`
       : `Own all 12 kinds of cow (${have}/12), then touch this crystal to fuse them into the Super Milker!`;
     if (pb.el.textContent !== text) pb.el.textContent = text;

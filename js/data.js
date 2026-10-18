@@ -45,7 +45,7 @@ const MILK = {
     drink: { heal: 99, buff: 'guard', dur: 10, desc: 'Full hearts and 10s of safety' } },
 };
 const MILK_KEYS = Object.keys(MILK);
-const SUPER_SHOT = { dmg: 3.4, cd: 0.2, fx: 'super', desc: 'Rainbow blast. The only milk that hurts King Clawdius' };
+const SUPER_SHOT = { dmg: 3.4, cd: 0.2, fx: 'super', desc: 'Five rainbow streams that fly across the screen. The only milk that hurts King Clawdius' };
 const SUPER_CHARGES = 45; // seconds of rainbow stream
 
 const COWS = {
@@ -92,7 +92,7 @@ const UPG = {
   boots:  { name: 'Comfy Boots', desc: 'Walk faster', costs: [120, 360], vals: [9, 10.5, 12], unit: ' speed' },
   amp:    { name: 'Shield Amplifier', desc: '+25 max shield, yarn powers more', costs: [250, 650, 1300], vals: [1, 1.25, 1.5, 1.8], unit: 'x yarn' },
   gears:  { name: 'Spindle Gears', desc: 'Great Spindle spins faster', costs: [200, 600], vals: [6, 4, 2.5], unit: 's per wool' },
-  barn:   { name: 'Barn & Meadow', desc: 'Room for 4 more cows and sheep', costs: [200, 500, 1000], vals: [8, 12, 16, 20], unit: ' each' },
+  barn:   { name: 'Barn & Meadow', desc: 'Room for 4 more cows and sheep', costs: [200, 450], vals: [8, 12, 16], unit: ' each' },
 };
 
 const RECIPES = [
@@ -118,7 +118,7 @@ const KITTENS = {
   shadow:  { name: 'Shadow Kitten', hp: 4, speed: 5.2, dmg: 1.8, color: 0x2c2a3c, stripe: 0x14131d, eye: 0xd27bff, scale: 1, coins: [6, 10] },
   siamese: { name: 'Siamese Schemer', hp: 6, speed: 5.6, dmg: 1.4, color: 0xf3e6cf, stripe: 0x5a4034, eye: 0x5fd3ff, scale: 1.1, coins: [7, 12] },
   duchess: { name: 'Duchess Whiskerella', hp: 70, speed: 3.4, dmg: 6, color: 0xf5f0ff, stripe: 0xcfa8ff, eye: 0xff4fa3, scale: 2.7, coins: [250, 300], boss: true, crown: true },
-  clawdius:{ name: 'King Clawdius, the Cat-astrophe', hp: 260, speed: 4.2, dmg: 2, color: 0x3d3350, stripe: 0x1f1830, eye: 0xff3b6b, scale: 4.6, coins: [1500, 1500], boss: true, crown: true, cave: true },
+  clawdius:{ name: 'King Clawdius, the Cat-astrophe', hp: 1100, speed: 4.2, dmg: 2, color: 0x3d3350, stripe: 0x1f1830, eye: 0xff3b6b, scale: 4.6, coins: [1500, 1500], boss: true, crown: true, cave: true },
 };
 
 const FAITH = [0, 15, 50, 120, 250, 450];
@@ -138,7 +138,7 @@ const NPC_DEF = {
     chatter: ["Happy cows make extra milk. Feed them hay and give them pets!",
       "Pick up a cow with C and squeeze! Every milk does something different to kittens.",
       "Press G and your cows will follow you around and squirt kittens for you!",
-      "Every time you level up, the Moo Market gets fancier cows. Save up for a golden one!",
+      "Cows can't be bought. Every new one you bring home from the woods clears the brambles hiding the next!",
       "Chocolate cows make chocolate milk. Strawberry cows make strawberry milk. I don't ask questions, dear.",
       "The Creamery by the sheep meadow can mix milks into treats. And maybe something more..."] },
   bo: { name: 'Shepherd Bo', role: 'Sheep Meadow', x: 17, z: 46, species: 'sheep', robe: 0x6aa9ff, trim: 0xffffff, hat: 'cap', face: 0x3a3a44,
@@ -212,8 +212,8 @@ const FARMERS = {
       ["I made a mochi that looks like you. Then I couldn't eat it. It's in the window.", "You're the best part of my day. And I make dessert all day!"],
       ["I've been practicing a new recipe. It's called 'Tori Sweet Bun'. It's very sweet. Like you. Oh no, I said that out loud."]],
     problems: [
-      { need: { banana: 2 }, lines: ["Banana bread emergency! The oven is hot and I'm out of banana milk!", "Bring me 2 Banana Milk and I'll give you something you'll love."],
-        thanks: ["You saved the bread! Here, take my spare Mochi Cow, Dango. She likes you already."], coins: 40, gift: { cow: 'mochi' } },
+      { need: { banana: 2 }, lines: ["Banana bread emergency! The oven is hot and I'm out of banana milk!", "Bring me 2 Banana Milk and I'll make it worth your while."],
+        thanks: ["You saved the bread! Here, take some hay and a little something for your trouble."], coins: 80, gift: { hay: 6 } },
       { need: { mochi: 3 }, lines: ["The Mochi Moon Festival is tomorrow and I need a mountain of mochi.", "3 Mochi Milk, please! Your Mochi Cow should help."],
         thanks: ["A mochi mountain! The whole Hollow is talking. Mostly about you, though."], coins: 90 },
       { need: { choc: 2, cookie: 1 }, lines: ["I want to win the castle bake-off with a cookie choco bun.", "2 Chocolate Milk and 1 Cookies & Cream Milk."],
@@ -251,9 +251,9 @@ const FARMERS = {
 
 /* ---------- Forest clearings: where wild cows and sheep live ---------- */
 const CLEARINGS = [
-  { id: 'cocoa', name: 'Cocoa Glade', x: -42, z: 2, r: 11, where: 'west of the road between your farm and the castle', animals: [{ c: 'choc' }, { c: 'choc' }, { s: 'mud' }], guards: 0 },
+  { id: 'cocoa', name: 'Cocoa Glade', x: -42, z: 2, r: 11, where: 'west of the road between your farm and the castle', animals: [{ c: 'choc' }, { s: 'mud' }], guards: 0 },
   { id: 'berry', name: 'Berry Thicket', x: 44, z: 4, r: 11, where: 'east of the road between your farm and the castle', animals: [{ c: 'straw' }, { c: 'blueberry' }, { s: 'meadow' }], guards: 1 },
-  { id: 'banana', name: 'Banana Bend', x: -162, z: 22, r: 11, where: 'far west, past Buttercup Hollow', animals: [{ c: 'banana' }, { c: 'classic' }, { s: 'meadow' }], guards: 2 },
+  { id: 'banana', name: 'Banana Bend', x: -162, z: 22, r: 11, where: 'far west, past Buttercup Hollow', animals: [{ c: 'banana' }, { s: 'meadow' }], guards: 2 },
   { id: 'orchard', name: 'Sunny Orchard', x: -165, z: 124, r: 10, where: 'in the far south-west corner', animals: [{ c: 'orange' }, { s: 'mud' }], guards: 2 },
   { id: 'almond', name: 'Almond Hollow', x: -112, z: -62, r: 11, where: 'in the woods west of the castle', animals: [{ c: 'almond' }, { s: 'cloud' }], guards: 2 },
   { id: 'cookie', name: 'Cookie Crumble Clearing', x: 105, z: 70, r: 11, where: 'south-east, past the lily pond', animals: [{ c: 'cookie' }, { s: 'cloud' }], guards: 3 },
@@ -268,6 +268,16 @@ const FOREST_TRAILS = [
   [[-3, -24], [-60, -28], [-112, -62]], [[-112, -62], [-100, -110], [-95, -150]], [[-112, -62], [-150, -120], [-176, -166]],
   [[85, -20], [92, -90], [95, -150]], [[85, -20], [95, 30], [105, 70]], [[150, -20], [165, -80], [172, -140]],
 ];
+
+/* ---------- Discovery order: one cow after another ----------
+   Each breed hides behind brambles until the one before it is found (after) and the story has reached a quest (quest). */
+const UNLOCKS = {
+  cow: { choc: { quest: 1 }, straw: { after: 'choc', quest: 5 }, blueberry: { after: 'straw' }, banana: { after: 'blueberry', quest: 9 },
+    orange: { after: 'banana' }, almond: { after: 'orange', quest: 11 }, cookie: { after: 'almond' }, mochi: { after: 'cookie' },
+    mint: { after: 'mochi', quest: 12 }, moon: { after: 'mint', quest: 15 }, gold: { after: 'moon' } },
+  sheep: { mud: { quest: 3 }, meadow: { quest: 5 }, cloud: { after: 'meadow', quest: 10 }, snow: { after: 'cloud', quest: 12 } },
+};
+const COW_ORDER = ['choc', 'straw', 'blueberry', 'banana', 'orange', 'almond', 'cookie', 'mochi', 'mint', 'moon', 'gold'];
 
 /* ---------- Main story ---------- */
 const GOAL_TEXT = 'Free the sacred white sheep from King Clawdius';
@@ -337,10 +347,10 @@ const QUESTS = [
     talk: ["West of the farm is Buttercup Hollow. Hazel, Rowan, Theo and June live there.", "They always have little troubles a bottle of milk could fix, and they'll reward you. Theo even has a spare cow.", "And between you and me, dear, some of them are very sweet on you."],
     finish: ["I heard you helped out! The Hollow is buzzing about you.", "Romance is up to you, dear. Now, your herd. Moolissa at the Moo Market wants to see you."] },
   { giver: 'moolissa', title: "Explorer's Herd", text: 'Own 6 different kinds of cow', kind: 'cowTypes', n: 6, reward: { coins: 150, xp: 90 },
-    hint: 'Explore deeper into the woods. Rare cows are guarded by kittens. Press B to see which kinds you still need and where they roam.',
-    talk: ["Welcome to the Moo Market! I buy milk and wool, and I sell copies of any breed you've already found in the wild, plus upgrades.",
+    hint: 'Each new cow clears the brambles hiding the next one. Your quest box shows which cow to find next and where. Rare cows are guarded by kittens.',
+    talk: ["Welcome to the Moo Market! I buy milk and wool, and I sell upgrades. Cows? Oh no, dear. Wild cows can't be bought. You have to find them.",
       "Rare cows hide deep in the woods, guarded by kittens. Bring 6 different kinds of cow home and I'll make it worth your while."],
-    finish: ["Six breeds! You're a real cow explorer. Every one of them is in my catalog now.", "Tip: your pasture only holds 8 cows. Buy the Barn & Meadow upgrade from me when you need more room."] },
+    finish: ["Six breeds! You're a real cow explorer.", "Tip: your pasture only holds 8 cows. Buy the Barn & Meadow upgrade from me when you need more room."] },
   { giver: 'bo', title: 'Snow White', text: 'Shear Snow wool (whiteness 85+)', kind: 'stat', stat: 'snowShear', n: 1, reward: { coins: 150, xp: 90 },
     hint: 'Snowpuff Sheep roam the far north woods behind the castle. Bring one home, brush it to 85+, then shear it.',
     talk: ["Ready for a challenge? Shear a fleece with whiteness 85 or more. That's Snow grade, and it makes powerful yarn.", "Snowpuff Sheep roam the far north woods behind the castle. Brush often and keep the kittens off them."],
@@ -361,10 +371,10 @@ const QUESTS = [
     hint: 'Find every kind of cow (press B to see what is missing). Your pasture holds 8, so buy the Barn & Meadow upgrade at the Moo Market. Then press E at the crystal in the middle of town.',
     talk: ["Her big brother is King Clawdius, the Cat-astrophe. He sleeps in Catnap Cavern at the end of the Whisker Woods road, east of the castle.", "He keeps the sacred white sheep, the Seraph Sheep, locked in a cage. No ordinary milk can hurt him.",
       "But my grandma told me of the Super Milker. Find all twelve kinds of cow and bring them to your farm.", "Then use the glowing crystal in the middle of town. The twelve will fuse into ONE cow: the Super Milker. Her udder blasts rainbows!"],
-    finish: ["She shimmers like a rainbow! One cow of each kind became her. Any extra cows stayed, and Moolissa sells new copies of every breed you found.", "Now go to Captain Fleecewell. It's time."] },
+    finish: ["She shimmers like a rainbow! Your twelve cows live on inside her: use the crystal any time to split her back apart, or fuse even more cows into her to make her stronger.", "Now go to Captain Fleecewell. It's time."] },
   { giver: 'fleecewell', title: 'Into Catnap Cavern', text: 'Defeat King Clawdius with the Super Milker Cow', kind: 'stat', stat: 'clawdius', n: 1, reward: { coins: 600, xp: 300 },
-    hint: 'Pick up Prisma (C), follow the Whisker Woods road east to the cave, press E to enter, and squirt the King. Dodge his pounces!',
-    talk: ["Catnap Cavern is at the end of the Whisker Woods road. Look for the mountain with glowing eyes.", "Pick up your Super Milker Cow (C) and carry her inside. Only rainbow milk can hurt the King.", "Watch the red circles on the ground: that's where he'll pounce. Beat him and the Seraph Sheep's cage will spring open!"],
+    hint: 'Carry the SUPER MILKER (C) east along the Whisker Woods road to the cave archway and press E. Dodge red circles, jump the shockwaves, keep squirting.',
+    talk: ["Catnap Cavern is at the end of the Whisker Woods road. Look for the mountain with glowing eyes.", "Pick up your Super Milker Cow (C) and carry her inside. Without her in your arms he will just swat you back out!", "He pounces where red circles appear, coughs hairballs, rolls yarn boulders and slams the ground: JUMP (Space) over the shockwave. He dodges fast, so keep your streams on him.", "Beat him and the Seraph Sheep's cage will spring open!"],
     finish: ["You did it! King Clawdius is purring like a kitten!", "Now bring the sacred white sheep home, Tori. That's what all of this was for."] },
   { giver: 'fleecewell', turnin: 'lanolin', title: 'The Sacred White Sheep', text: 'Lead the Seraph Sheep into your meadow, then tell Lanolin', kind: 'ownSheep', minBase: 92, reward: { coins: 1000, xp: 300 },
     hint: 'Press E on the freed Seraph Sheep in the cave, walk it all the way home to your sheep meadow, then visit the Temple.',

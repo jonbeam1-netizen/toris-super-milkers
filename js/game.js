@@ -185,7 +185,7 @@ function milkCow(e) {
   let n = 1; if (c.happy >= 70) n++; if (blessLevel() >= 4 && Math.random() < 0.4) n++; if (Math.random() < state.level * 0.02) n++;
   const mk = c.type === 'super' ? pick(MILK_KEYS) : T.milk;
   const got = addMilk(mk, n + (c.type === 'super' ? 1 : 0));
-  c.cd = T.cd * (c.happy < 25 ? 2 : 1); c.happy = clamp(c.happy - 5, 0, 100);
+  c.cd = T.cd * 0.75 * (c.happy < 25 ? 2 : 1); c.happy = clamp(c.happy - 5, 0, 100);
   stat('milked'); addXP(3 + Math.floor(MILK[mk].price / 8));
   floatText(e.g.position.x, 3, e.g.position.z, `+${got} ${MILK[mk].name}`, 'milk');
   burst('milk', e.g.position.x, 1, e.g.position.z, 10, MILK[mk].hex); sfx('moo'); e.squash = 0.4;
@@ -533,7 +533,7 @@ function shoot() {
   if (mouseAiming && !t) { player.aimFace = ang; player.aimT = 0.3; }
   if (t) { ang = Math.atan2(t.g.position.x - px(), t.g.position.z - pz()); player.aimFace = ang; player.aimT = 0.4; }
   const ox = px() + Math.sin(ang) * 1.7, oz = pz() + Math.cos(ang) * 1.7, oy = 1.3;
-  const angs = spec.fx === 'spread' ? [ang - 0.22, ang, ang + 0.22] : [ang];
+  const angs = spec.fx === 'spread' ? [ang - 0.22, ang, ang + 0.22] : isSuper ? [-0.26, -0.13, 0, 0.13, 0.26].map(o => ang + o) : [ang];
   const dmgScale = STREAM_DT / spec.cd * (hasBuff('zest') ? 2 : 1);
   angs.forEach((a2, li) => spawnProj(ox, oy, oz, a2 + rand(-0.01, 0.01), t, sh, dmgScale, li));
   if (legacy) { cow.d.super = Math.max(0, cow.d.super - STREAM_DT); if (cow.d.super <= 0) { cow.d.super = 0; toast(`${cow.d.name}'s rainbow milk ran out.`, 'bad'); } }
@@ -548,11 +548,12 @@ function spawnProj(x, y, z, ang, target, sh, dmgScale, lane = 0) {
   const mat = isSuper ? new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL((elapsed * 1.5) % 1, 0.9, 0.65) }) : MB(sh.color);
   const m = new THREE.Mesh(G.sphLo, mat); m.scale.set(size * 0.28, size * 0.28, size * 3.8); m.position.set(x, y, z); scene.add(m);
   if (Math.random() < 0.5) spawnPart(PTEX.dot, isSuper ? mat.color : sh.color, x, y, z, Math.sin(ang) * rand(3, 7) + rand(-1, 1), rand(0.5, 2), Math.cos(ang) * rand(3, 7) + rand(-1, 1), rand(0.12, 0.25), rand(0.07, 0.12), 10);
-  const sp = spec.fx === 'heavy' ? 22 : spec.fx === 'zest' ? 32 : 27;
+  const sp = isSuper ? 46 : spec.fx === 'heavy' ? 22 : spec.fx === 'zest' ? 32 : 27;
   let vy = 2.2;
   if (target) { const d = dist2(x, z, target.g.position.x, target.g.position.z); vy = clamp(d * 0.11, 0.5, 4) + (target.def.scale - 1) * 1.2; }
+  if (isSuper) vy = 0.9;
   const link = new THREE.Mesh(G.sphLo, mat); link.visible = false; scene.add(link);
-  const q = { m, link, w: size * 0.28, lane, born: elapsed, newer: null, dead: false, vx: Math.sin(ang) * sp, vy, vz: Math.cos(ang) * sp, life: 1.1, spec, key: sh.key, color: sh.color, hit: new Set(), bounces: spec.fx === 'bounce' ? 1 : 0, isSuper, mat, dmgScale: dmgScale || 1 };
+  const q = { m, link, w: size * 0.28, lane, born: elapsed, newer: null, dead: false, vx: Math.sin(ang) * sp, vy, vz: Math.cos(ang) * sp, life: isSuper ? 1.5 : 1.1, spec, key: sh.key, color: sh.color, hit: new Set(), bounces: spec.fx === 'bounce' ? 1 : 0, isSuper, mat, dmgScale: dmgScale || 1 };
   const lp = player.lastProjs || (player.lastProjs = []), prev = lp[lane];
   if (prev && !prev.dead && elapsed - prev.born < 0.15) prev.newer = q;
   lp[lane] = q; q.auto = !!sh.auto; projs.push(q);
@@ -566,7 +567,8 @@ function shotDamage(p, k) {
 function hitKitten(k, p, dirx, dirz) {
   const dmg = shotDamage(p, k);
   if (k.def.cave && dmg === 0) { if (Math.random() < 0.04) floatText(k.g.position.x, 6, k.g.position.z, 'Immune! Only Super Milker milk works!', 'bad', 1.2); burst('milk', p.m.position.x, p.m.position.y, p.m.position.z, 4, p.color); return; }
-  k.hp -= dmg; k.flash = 0.15;
+  if (k.deflectT > 0) { burst('zap', p.m.position.x, p.m.position.y, p.m.position.z, 2, 0xffe27a); if (elapsed - (k.lastFloat || 0) > 0.6) { k.lastFloat = elapsed; floatText(k.g.position.x, 9, k.g.position.z, 'DEFLECTED!', 'bad', 0.8); } return; }
+  k.hp -= dmg; k.flash = 0.15; if (k.def.boss) k.hitT = 0.3;
   const kb = (p.spec.fx === 'heavy' ? 14 : 5) * Math.min(1, (p.dmgScale || 1) * 2.5) / (k.def.boss ? 4 : 1); k.kbx += dirx * kb; k.kbz += dirz * kb;
   const fx = p.spec.fx;
   if (!k.def.boss || fx === 'freeze') {
@@ -596,12 +598,12 @@ function defeatKitten(k, byPlayer) {
 function updateProjs(dt) {
   for (let i = projs.length - 1; i >= 0; i--) {
     const p = projs[i]; p.life -= dt;
-    if (p.spec.fx === 'homing' || p.isSuper) {
+    if (p.spec.fx === 'homing') {
       let best = null, bd = 16;
       for (const k of kittens) { if (k.state === 'sleepy' || k.state === 'charmed' || p.hit.has(k)) continue; const d = dist2(k.g.position.x, k.g.position.z, p.m.position.x, p.m.position.z); if (d < bd) { bd = d; best = k; } }
       if (best) { const dx = best.g.position.x - p.m.position.x, dz = best.g.position.z - p.m.position.z, d = Math.hypot(dx, dz) || 1, sp = Math.hypot(p.vx, p.vz); p.vx = lerp(p.vx, dx / d * sp, dt * 6); p.vz = lerp(p.vz, dz / d * sp, dt * 6); p.vy = Math.max(p.vy, 0.5); }
     }
-    p.vy -= 6 * dt;
+    p.vy -= (p.isSuper ? 0.9 : 6) * dt;
     p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
     _dir.set(p.m.position.x + p.vx, p.m.position.y + p.vy, p.m.position.z + p.vz); p.m.lookAt(_dir);
     if (Math.random() < 0.45) spawnPart(PTEX.dot, p.isSuper ? p.mat.color : p.color, p.m.position.x + rand(-0.07, 0.07), p.m.position.y + rand(-0.07, 0.07), p.m.position.z + rand(-0.07, 0.07),
@@ -614,7 +616,7 @@ function updateProjs(dt) {
       const dx = p.m.position.x - kp.x, dz = p.m.position.z - kp.z;
       if (dx * dx + dz * dz < r * r && p.m.position.y < kp.y + 1.6 * k.def.scale + 0.6) {
         p.hit.add(k); const sp = Math.hypot(p.vx, p.vz) || 1;
-        if (p.spec.fx === 'boom' || p.isSuper) explode(p, p.isSuper ? 2.2 : 3.2);
+        if (p.spec.fx === 'boom') explode(p, 3.2);
         else hitKitten(k, p, p.vx / sp, p.vz / sp);
         if (Math.random() < 0.35) addPuddle(kp.x + rand(-0.6, 0.6), kp.z + rand(-0.6, 0.6), p);
         if (p.spec.fx === 'homing' || p.isSuper) continue;
@@ -679,7 +681,7 @@ function spawnKitten(type, goal, at) {
   if (at) { x = at.x; z = at.z; } else ({ x, z } = edgeSpawn());
   m.g.position.set(x, 0, z); scene.add(m.g);
   const fxm = new THREE.Mesh(G.sphLo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })); fxm.position.y = 0.6; fxm.scale.set(0.9, 0.7, 1.1); fxm.visible = false; m.g.add(fxm);
-  const k = { m, g: m.g, type, def: K, hp: K.hp * (K.boss ? 1 + state.wave * 0.05 : 1 + threat() * 0.03), max: 0, goal, state: 'move', cd: rand(0, 1), t: 0, seed: rand(0, 10), kbx: 0, kbz: 0, stun: 0, root: 0, slow: 0, flash: 0, face: -Math.PI / 2, tgt: null, harass: 0, summonT: 8, fxm, cave: false };
+  const k = { m, g: m.g, type, def: K, hp: K.hp * (K.cave ? 1 : K.boss ? 1 + state.wave * 0.05 : 1 + threat() * 0.03), max: 0, goal, state: 'move', cd: rand(0, 1), t: 0, seed: rand(0, 10), kbx: 0, kbz: 0, stun: 0, root: 0, slow: 0, flash: 0, face: -Math.PI / 2, tgt: null, harass: 0, summonT: 8, fxm, cave: false };
   k.max = k.hp; kittens.push(k);
   if (K.boss) { showBoss(K.name, 1); if (type === 'duchess') { toast('Duchess Whiskerella has joined the raid!', 'bad'); sfx('roar'); } }
   return k;
@@ -892,7 +894,7 @@ function enterCave() {
     player.inCave = true; player.g.position.set(CAVE.x, 0, CAVE.z + 12); moveFollowersTo(CAVE.x, CAVE.z + 12, true); player.face = Math.PI; player.vx = player.vz = 0;
     if (!state.flags.clawdius) {
       caveBoss = spawnKitten('clawdius', 'player', { x: CAVE.x, z: CAVE.z - 14 }); caveBoss.cave = true; caveBoss.atk = 4; caveBoss.mode = 'walk';
-      sfx('roar'); toast('KING CLAWDIUS: "Who dares wake me?! Your silly milk cannot hurt ME!"', 'bad');
+      sfx('roar'); toast(player.carrying && player.carrying.d.type === 'super' ? 'KING CLAWDIUS: "The Super Milker?! Impossible! GET OUT!"' : 'KING CLAWDIUS: "Who dares wake me?! Without the Super Milker you are NOTHING!"', 'bad');
       const sc = player.carrying && (player.carrying.d.super > 0 || player.carrying.d.type === 'super');
       if (!sc) setTimeout(() => toast('Tip: only the Super Milker Cow can hurt him. Bring all 12 kinds of cow home and fuse them at the Creamery.'), 2500);
     } else {
@@ -908,53 +910,146 @@ function leaveCave(silent) {
     for (let i = kittens.length - 1; i >= 0; i--) if (kittens[i].dead) kittens.splice(i, 1);
     for (const t of telegraphs) scene.remove(t.m); telegraphs.length = 0;
     for (const e of eprojs) scene.remove(e.m); eprojs.length = 0;
+    for (const w of shockwaves) scene.remove(w.m); shockwaves.length = 0;
     caveBoss = null; hideBoss();
   };
   if (silent) go(); else fadeScreen(go);
 }
 function updateClawdius(k, dt, dp) {
-  const p = k.g.position, enraged = k.hp < k.max * 0.5;
-  k.atk -= dt; k.summonT -= dt;
-  if (k.mode === 'pounce') {
-    k.pt += dt; const u = Math.min(1, k.pt / 0.65);
-    p.x = lerp(k.px0, k.ptx, u); p.z = lerp(k.pz0, k.ptz, u); p.y = Math.sin(u * Math.PI) * 6;
-    if (u >= 1) { k.mode = 'walk'; p.y = 0; burst('ring', p.x, 0.5, p.z, 1, 0xff3b6b); burst('mud', p.x, 0.5, p.z, 20); sfx('boom'); if (dist2(p.x, p.z, px(), pz()) < 4.5) hurtPlayer(2, k); }
-  } else {
-    const dx = px() - p.x, dz = pz() - p.z, d = Math.hypot(dx, dz) || 1;
-    const sp = k.def.speed * (enraged ? 1.4 : 1) * (k.slow > 0 ? 0.5 : 1);
-    if (d > 5) { p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; }
-    k.face = Math.atan2(dx, dz); k.g.rotation.y = turnTo(k.g.rotation.y, k.face, Math.min(1, dt * 6));
-    p.y = Math.abs(Math.sin(k.t * 5)) * 0.4;
-    if (d < 4.5 && k.cd <= 0) { k.cd = 1.4; hurtPlayer(2, k); }
-    if (k.atk <= 0) {
-      k.atk = enraged ? 3.4 : 5;
-      const r = Math.random();
-      if (r < 0.45) { // pounce
-        const t = new THREE.Mesh(new THREE.RingGeometry(3.2, 4.5, 40), new THREE.MeshBasicMaterial({ color: 0xff3b6b, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
-        t.rotation.x = -Math.PI / 2; t.position.set(px(), 0.15, pz()); scene.add(t);
-        telegraphs.push({ m: t, t: 0, life: 1.0, onEnd: () => { k.mode = 'pounce'; k.pt = 0; k.px0 = p.x; k.pz0 = p.z; k.ptx = t.position.x; k.ptz = t.position.z; } });
-        floatText(p.x, 9, p.z, 'POUNCE!', 'bad'); sfx('meow');
-      } else { // hairball volley
-        const n = enraged ? 11 : 7, base = Math.atan2(px() - p.x, pz() - p.z);
-        for (let j = 0; j < n; j++) {
-          const a = base + (j - (n - 1) / 2) * 0.16;
-          const m = new THREE.Mesh(G.sphLo, M(0x7a8a5a)); m.scale.setScalar(0.55); m.position.set(p.x + Math.sin(a) * 3, 2.2, p.z + Math.cos(a) * 3); scene.add(m);
-          eprojs.push({ m, vx: Math.sin(a) * 15, vz: Math.cos(a) * 15, life: 2.2 });
-        }
-        floatText(p.x, 9, p.z, 'HACK! HAIRBALLS!', 'bad'); sfx('hurt');
-      }
-    }
-    if (k.summonT <= 0) { k.summonT = enraged ? 10 : 15; if (kittens.filter(o => o.cave && o.state === 'move').length < 7) for (let j = 0; j < (enraged ? 3 : 2); j++) { const kk = spawnKitten(pick(['tabby', 'ginger', 'shadow']), 'player', { x: p.x + rand(-5, 5), z: p.z + rand(-5, 5) }); kk.cave = true; } }
+  const p = k.g.position, frac = k.hp / k.max, phase = frac < 0.34 ? 3 : frac < 0.67 ? 2 : 1;
+  const armed = player.carrying && player.carrying.d.type === 'super';
+  k.atk -= dt; k.summonT -= dt; k.dodgeCd = (k.dodgeCd || 0) - dt; k.hitT = (k.hitT || 0) - dt; k.deflectT = (k.deflectT || 0) - dt;
+  if (!k.shieldM) { k.shieldM = new THREE.Mesh(G.sph, new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); k.g.add(k.shieldM); k.shieldM.position.y = 1; k.shieldM.scale.setScalar(1.25); }
+  k.shieldM.visible = k.deflectT > 0; if (k.deflectT > 0) k.shieldM.material.opacity = 0.25 + Math.sin(k.t * 18) * 0.12;
+  if (k.phase !== phase) {
+    if (k.phase) { toast(phase === 2 ? 'King Clawdius is getting ANGRY! Faster attacks!' : 'King Clawdius goes FERAL! Everything at once!', 'bad'); sfx('roar'); burst('ring', p.x, 1, p.z, 1, 0xff3b6b); }
+    k.phase = phase;
   }
-  const sw = Math.sin(k.t * 8) * 0.5; k.m.legs.forEach((L, j) => L.rotation.x = (j % 2 ? sw : -sw)); k.m.tail.rotation.z = Math.sin(k.t * 3) * 0.5;
-  k.m.body.scale.setScalar(k.flash > 0 ? 1.08 : 1);
-  showBoss(k.def.name, k.hp / k.max);
+  const anim = () => {
+    const sw = Math.sin(k.t * (k.mode === 'dash' ? 20 : 8)) * 0.5; k.m.legs.forEach((L, j) => L.rotation.x = (j % 2 ? sw : -sw));
+    k.m.tail.rotation.z = Math.sin(k.t * 3) * 0.5; k.m.body.scale.setScalar(k.flash > 0 ? 1.08 : 1);
+    showBoss(k.def.name + (phase > 1 ? (phase === 3 ? ' · FERAL' : ' · ANGRY') : ''), k.hp / k.max);
+  };
+  const toPx = px() - p.x, toPz = pz() - p.z, d = Math.hypot(toPx, toPz) || 1;
+  /* Without the Super Milker in your arms, he just swats you out of his cave */
+  if (!armed) {
+    k.swatT = (k.swatT === undefined ? 2.5 : k.swatT) - dt;
+    k.face = Math.atan2(toPx, toPz); k.g.rotation.y = turnTo(k.g.rotation.y, k.face, Math.min(1, dt * 6));
+    if (d > 5) { p.x += toPx / d * 9 * dt; p.z += toPz / d * 9 * dt; }
+    p.y = Math.abs(Math.sin(k.t * 5)) * 0.4;
+    if ((d < 6 || k.swatT <= 0) && !k.swatting) {
+      k.swatting = true; sfx('roar'); burst('ring', px(), 1, pz(), 1, 0xff3b6b); burst('mud', px(), 1.5, pz(), 16);
+      floatText(px(), 4, pz(), 'SWAT!', 'bad', 1.2); player.vz += 45;
+      setTimeout(() => { if (player.inCave) { leaveCave(); toast('King Clawdius batted you right out of his cave! Only the Super Milker Cow can hurt him. Carry her in your arms (C).', 'bad'); } }, 650);
+    }
+    anim(); return;
+  }
+  k.swatT = 2.5; k.swatting = false;
+  if (k.mode === 'dash') {
+    k.dashT -= dt; p.x += k.dvx * dt; p.z += k.dvz * dt; p.y = 0.3;
+    if (Math.random() < 0.7) burst('sparkle', p.x, 2.5, p.z, 1, 0xc9a8ff);
+    if (k.dashT <= 0) k.mode = 'walk';
+  } else if (k.mode === 'pounce') {
+    k.pt += dt; const u = Math.min(1, k.pt / 0.6);
+    p.x = lerp(k.px0, k.ptx, u); p.z = lerp(k.pz0, k.ptz, u); p.y = Math.sin(u * Math.PI) * 7;
+    if (u >= 1) { k.mode = 'walk'; p.y = 0; burst('ring', p.x, 0.5, p.z, 1, 0xff3b6b); burst('mud', p.x, 0.5, p.z, 20); sfx('boom'); if (dist2(p.x, p.z, px(), pz()) < 4.8) hurtPlayer(2, k); }
+  } else {
+    // circle at a distance, back off when Tori gets too close
+    const want = 9, sp = k.def.speed * (1 + (phase - 1) * 0.3) * (k.slow > 0 ? 0.5 : 1);
+    const strafe = Math.sin(k.t * 0.7) > 0 ? 1 : -1;
+    let mx = 0, mz = 0;
+    if (d > want + 2) { mx = toPx / d; mz = toPz / d; } else if (d < want - 3) { mx = -toPx / d * 0.7; mz = -toPz / d * 0.7; }
+    mx += -toPz / d * 0.45 * strafe; mz += toPx / d * 0.45 * strafe;
+    p.x += mx * sp * dt; p.z += mz * sp * dt; p.y = Math.abs(Math.sin(k.t * 5)) * 0.4;
+    k.face = Math.atan2(toPx, toPz); k.g.rotation.y = turnTo(k.g.rotation.y, k.face, Math.min(1, dt * 6));
+    // quick dodge sideways out of the milk streams
+    if (k.hitT > 0 && k.dodgeCd <= 0 && Math.random() < 0.3 + phase * 0.15) {
+      const a = Math.atan2(toPx, toPz) + (Math.random() < 0.5 ? -1 : 1) * Math.PI / 2, ds = 24 + phase * 5;
+      k.dvx = Math.sin(a) * ds; k.dvz = Math.cos(a) * ds; k.dashT = 0.38; k.mode = 'dash'; k.dodgeCd = [3.2, 2.2, 1.4][phase - 1];
+      floatText(p.x, 10, p.z, 'Whoosh!', 'hit', 0.7); sfx('meow');
+    }
+    if (d < 5 && k.cd <= 0) { k.cd = 1.3; hurtPlayer(2, k); burst('mud', px(), 1, pz(), 8); }
+    if (k.atk <= 0) {
+      k.atk = [4.6, 3.4, 2.4][phase - 1];
+      const pool = ['pounce', 'hairball', 'shockwave', 'deflect', 'yarnrain'].concat(phase >= 2 ? ['yarn', 'pounce', 'deflect'] : []).concat(phase >= 3 ? ['shockwave', 'yarn', 'yarnrain', 'hairball'] : []);
+      bossMove(k, pick(pool), phase);
+    }
+  }
+  if (k.summonT <= 0) {
+    k.summonT = [16, 12, 9][phase - 1];
+    if (kittens.filter(o => o.cave && o.state === 'move').length < 8) for (let j = 0; j < phase + 1; j++) { const kk = spawnKitten(pick(['tabby', 'ginger', 'shadow']), 'player', { x: p.x + rand(-6, 6), z: p.z + rand(-6, 6) }); kk.cave = true; }
+    floatText(p.x, 10, p.z, 'MINIONS, ATTACK!', 'bad', 1);
+  }
+  const ax = p.x - CAVE.x, az = p.z - CAVE.z, ad = Math.hypot(ax, az); if (ad > CAVE.r - 4) { p.x = CAVE.x + ax / ad * (CAVE.r - 4); p.z = CAVE.z + az / ad * (CAVE.r - 4); }
+  anim();
 }
+function bossMove(k, move, phase) {
+  const p = k.g.position;
+  if (move === 'pounce') {
+    const t = new THREE.Mesh(new THREE.RingGeometry(3.2, 4.6, 40), new THREE.MeshBasicMaterial({ color: 0xff3b6b, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+    t.rotation.x = -Math.PI / 2; t.position.set(px(), 0.15, pz()); scene.add(t);
+    telegraphs.push({ m: t, t: 0, life: phase === 3 ? 0.75 : 1.0, onEnd: () => { k.mode = 'pounce'; k.pt = 0; k.px0 = p.x; k.pz0 = p.z; k.ptx = t.position.x; k.ptz = t.position.z; } });
+    floatText(p.x, 10, p.z, 'POUNCE!', 'bad'); sfx('meow');
+  } else if (move === 'hairball') {
+    const n = [7, 11, 15][phase - 1], base = Math.atan2(px() - p.x, pz() - p.z);
+    for (let j = 0; j < n; j++) {
+      const a = base + (j - (n - 1) / 2) * 0.15, m = new THREE.Mesh(G.sphLo, M(0x7a8a5a)); m.scale.setScalar(0.55); m.position.set(p.x + Math.sin(a) * 3, 2.2, p.z + Math.cos(a) * 3); scene.add(m);
+      eprojs.push({ m, vx: Math.sin(a) * 16, vz: Math.cos(a) * 16, life: 2.2, r: 1.1 });
+    }
+    floatText(p.x, 10, p.z, 'HACK! HAIRBALLS!', 'bad'); sfx('hurt');
+  } else if (move === 'shockwave') {
+    const t = new THREE.Mesh(new THREE.RingGeometry(4.5, 5.5, 48), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+    t.rotation.x = -Math.PI / 2; t.position.set(p.x, 0.15, p.z); scene.add(t);
+    k.mode = 'walk'; floatText(p.x, 10, p.z, 'GROUND SLAM! JUMP!', 'bad', 1.2);
+    telegraphs.push({ m: t, t: 0, life: 0.9, onEnd: () => {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 64), new THREE.MeshBasicMaterial({ color: 0xff9f3d, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, 0.3, p.z); scene.add(ring);
+      shockwaves.push({ m: ring, x: p.x, z: p.z, r: 3, hit: false }); sfx('boom'); burst('mud', p.x, 0.5, p.z, 24);
+    } });
+  } else if (move === 'deflect') {
+    k.deflectT = [2.5, 3, 3.5][phase - 1];
+    floatText(p.x, 10, p.z, 'PAW SHIELD! Milk bounces off!', 'bad', 1.4); sfx('zap');
+  } else if (move === 'yarnrain') {
+    const n = [6, 9, 13][phase - 1];
+    for (let j = 0; j < n; j++) {
+      const a = rand(0, TAU), r = j === 0 ? 0 : rand(1.5, 10), x = clamp(px() + Math.cos(a) * r, CAVE.x - CAVE.r + 3, CAVE.x + CAVE.r - 3), z = clamp(pz() + Math.sin(a) * r, CAVE.z - CAVE.r + 3, CAVE.z + CAVE.r - 3);
+      const t = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.7, 28), new THREE.MeshBasicMaterial({ color: 0xff3b6b, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+      t.rotation.x = -Math.PI / 2; t.position.set(x, 0.15, z); scene.add(t);
+      telegraphs.push({ m: t, t: 0, life: 1.1 + j * 0.06, onEnd: () => {
+        const m = new THREE.Mesh(G.sph, M(pick([0xff9fc0, 0x9fd8ff, 0xfff1a8, 0xc9b0ff]))); m.scale.setScalar(1.1); m.position.set(x, 26, z); scene.add(m);
+        eprojs.push({ m, vx: 0, vz: 0, vy: -38, life: 3, r: 1.8, fall: true });
+      } });
+    }
+    floatText(p.x, 10, p.z, 'YARN FROM THE CEILING!', 'bad', 1.2); sfx('roar');
+  } else if (move === 'yarn') {
+    const n = phase === 3 ? 5 : 3;
+    for (let j = 0; j < n; j++) {
+      const a = rand(0, TAU), m = new THREE.Mesh(G.sph, M(pick([0xff9fc0, 0x9fd8ff, 0xfff1a8, 0xc9b0ff]))); m.scale.setScalar(1.4);
+      m.position.set(p.x + Math.sin(a) * 4, 1.4, p.z + Math.cos(a) * 4); scene.add(m);
+      eprojs.push({ m, vx: Math.sin(a) * 12, vz: Math.cos(a) * 12, life: 7, r: 1.9, bounce: true });
+    }
+    floatText(p.x, 10, p.z, 'YARN BOULDERS!', 'bad'); sfx('roar');
+  }
+}
+const shockwaves = [];
 function updateCaveFx(dt) {
   for (let i = telegraphs.length - 1; i >= 0; i--) { const t = telegraphs[i]; t.t += dt; t.m.material.opacity = 0.35 + Math.sin(t.t * 20) * 0.3; if (t.t >= t.life) { scene.remove(t.m); telegraphs.splice(i, 1); t.onEnd && t.onEnd(); } }
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const w = shockwaves[i]; w.r += 17 * dt; w.m.scale.setScalar(w.r); w.m.material.opacity = Math.max(0, 0.85 - w.r / 40);
+    const d = dist2(px(), pz(), w.x, w.z);
+    if (!w.hit && Math.abs(d - w.r) < 1.3 && (player.jy || 0) < 0.6) { w.hit = true; hurtPlayer(1, null); floatText(px(), 3, pz(), 'Jump next time!', 'bad', 1); }
+    if (w.r > 34) { scene.remove(w.m); shockwaves.splice(i, 1); }
+  }
   for (let i = eprojs.length - 1; i >= 0; i--) {
-    const e = eprojs[i]; e.life -= dt; e.m.position.x += e.vx * dt; e.m.position.z += e.vz * dt; e.m.rotation.x += dt * 8;
-    if (dist2(e.m.position.x, e.m.position.z, px(), pz()) < 1.2) { hurtPlayer(1, null); e.life = 0; burst('mud', e.m.position.x, 1, e.m.position.z, 8); }
+    const e = eprojs[i]; e.life -= dt;
+    if (e.fall) {
+      e.m.position.y += e.vy * dt; e.m.rotation.x += dt * 6;
+      if (e.m.position.y <= 1.1) { burst('wool', e.m.position.x, 0.8, e.m.position.z, 10, e.m.material.color.getHex()); burst('ring', e.m.position.x, 0.4, e.m.position.z, 1, 0xff9fc0); sfx('boom'); if (dist2(e.m.position.x, e.m.position.z, px(), pz()) < e.r) hurtPlayer(1, null); scene.remove(e.m); eprojs.splice(i, 1); }
+      continue;
+    }
+    e.m.position.x += e.vx * dt; e.m.position.z += e.vz * dt; e.m.rotation.x += dt * 8;
+    if (e.bounce) { const dx = e.m.position.x - CAVE.x, dz = e.m.position.z - CAVE.z, d = Math.hypot(dx, dz); if (d > CAVE.r - 2) { const nx = dx / d, nz = dz / d, dot = e.vx * nx + e.vz * nz; e.vx -= 2 * dot * nx; e.vz -= 2 * dot * nz; e.m.position.x = CAVE.x + nx * (CAVE.r - 2.1); e.m.position.z = CAVE.z + nz * (CAVE.r - 2.1); } }
+    if (dist2(e.m.position.x, e.m.position.z, px(), pz()) < (e.r || 1.2) && (player.jy || 0) < 1.2) { hurtPlayer(1, null); if (!e.bounce) { e.life = 0; burst('mud', e.m.position.x, 1, e.m.position.z, 8); } }
     if (e.life <= 0) { scene.remove(e.m); eprojs.splice(i, 1); }
   }
 }
@@ -1045,7 +1140,7 @@ function updateSheep(dt) {
   const glow = blessLevel() >= 3, grow = blessLevel() >= 1 ? 1.25 : 1;
   for (const e of sheepEnts) {
     const s = e.d, B = BREEDS[s.breed];
-    s.fleece = Math.min(1, s.fleece + dt / 90 * grow); s.brushCd = Math.max(0, s.brushCd - dt);
+    s.fleece = Math.min(1, s.fleece + dt / 60 * grow); s.brushCd = Math.max(0, s.brushCd - dt);
     if (s.white > B.base && !glow) s.white = Math.max(B.base, s.white - dt * 0.03);
     else if (s.white < B.base) s.white = Math.min(B.base, s.white + dt * 0.05);
     const wq = Math.floor(s.white), fq = Math.round(s.fleece * 20);
@@ -1142,7 +1237,10 @@ function updateWorld(dt) {
   W.cop.scale.set(1.2 + sp.momentum / 220, 2.6 + sp.momentum / 120, 1.2 + sp.momentum / 220);
   W.basketYarn.visible = basketTotal() > 0;
   if (state.field.power > 0 && !state.flags.breached && state.quest.i >= 8) state.field.power = Math.max(0, state.field.power - dt * 0.15 * (blessLevel() >= 2 ? 0.7 : 1) * (hasSeraph() ? 0.1 : 1));
-  if (hasSeraph() && !state.flags.breached) state.field.power = Math.min(maxPower(), state.field.power + dt * 0.35);
+  if (hasSeraph()) {
+    state.field.power = Math.min(maxPower(), state.field.power + dt * (state.flags.breached ? 1.2 : 0.35));
+    if (state.flags.breached && state.field.power >= 25) { state.flags.breached = false; toast("The Seraph Sheep's golden fleece restarts the shield!", 'good'); }
+  }
   if (state.field.power <= 0 && !state.flags.breached && raid.active) breach();
   const pr = state.field.power / maxPower(); domeFlash = Math.max(0, domeFlash - dt * 1.5);
   const dm = W.dome.material;
@@ -1219,7 +1317,7 @@ function findTarget() {
   if (player.inCave) { const s = stations.find(s => s.kind === 'portal'); consider(s.it, s.x, s.z, s.r); for (const w of wilds) if (w.cave) consider(w.it, w.g.position.x, w.g.position.z, 3.6); return best; }
   for (const e of cowEnts) if (!e.carried) consider(e.it, e.g.position.x, e.g.position.z, 3.4);
   for (const e of sheepEnts) consider(e.it, e.g.position.x, e.g.position.z, 2.9);
-  for (const w of wilds) if (!w.cave || w.follow) consider(w.it, w.g.position.x, w.g.position.z, 3.4);
+  for (const w of wilds) if (!w.cave || w.follow) consider(w.it, w.g.position.x, w.g.position.z, w.locked ? 5.5 : 3.4);
   for (const k in npcEnts) consider(npcEnts[k].it, npcEnts[k].g.position.x, npcEnts[k].g.position.z, 3.6);
   for (const k in farmerEnts) consider(farmerEnts[k].it, farmerEnts[k].g.position.x, farmerEnts[k].g.position.z, 3.8);
   for (const e of sacred) consider(e.it, e.g.position.x, e.g.position.z, 2.8);
@@ -1301,7 +1399,7 @@ function frame(now) {
     camera.position.lerp(camTarget, 1 - Math.pow(0.0015, dt));
     camera.lookAt(p.x, 1.2, p.z - 1.5);
     sun.position.set(p.x + 30, 55, p.z + 22); sun.target.position.set(p.x, 0, p.z);
-    updateWeapon(); updateThreats(); updatePersist();
+    updateWeapon(); updateThreats(); updatePersist(); updateTrapBubbles();
     uiT -= dt; if (uiT <= 0) { uiT = 0.2; updateHUD(); updateMarkers(); }
     cardT -= dt; if (cardT <= 0 || cardDirty) { cardT = 0.15; renderCard(findTarget()); }
     mmT -= dt; if (mmT <= 0) { mmT = 0.15; drawMinimap(); }

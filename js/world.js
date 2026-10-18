@@ -416,16 +416,30 @@ function buildWoods() {
   }
   for (const k of fkeys) inst(G.sphLo, M(+k), flowers[k], false);
   disc(150, -20, 50, 0x9cc292, 0.015);
-  // Catnap Cavern mountain
-  const mt = new THREE.Group(); mt.position.set(CAVE_DOOR.x + 10, 0, CAVE_DOOR.z); scene.add(mt);
-  for (let i = 0; i < 14; i++) { const a = rand(-Math.PI, Math.PI); const r = rand(4, 13); const s = rand(5, 10); const rk = P(mt, G.dodec, pick([0x8a7f9e, 0x7a6f8e, 0x9a90ad]), Math.cos(a) * r + 5, s * 0.6, Math.sin(a) * r, s, s * rand(0.8, 1.3), s); rk.rotation.set(rand(0, 3), rand(0, 3), 0); }
-  P(mt, G.dodec, 0x8a7f9e, 4, 12, 0, 12, 14, 12);
-  P(mt, G.sph, 0x150f20, -9.2, 3.4, 0, 1.6, 3.8, 4.2);
-  for (const s of [-1, 1]) P(mt, G.sph, MB(0xff3b6b), -10.6, 5.8, s * 1.2, 0.2, 0.45, 0.3);
+  // Catnap Cavern: the mountain sits behind the entrance so the archway faces the road and the camera
+  const mx = CAVE_DOOR.x + 2, mz = CAVE_DOOR.z - 17;
+  const mt = new THREE.Group(); mt.position.set(mx, 0, mz); scene.add(mt);
+  for (let i = 0; i < 16; i++) {
+    const a = rand(0, TAU), r = rand(5, 13), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (z > 5 && Math.abs(x) < 9) continue; // keep the front clear
+    const sz = rand(5, 9); const rk = P(mt, G.dodec, pick([0x8a7f9e, 0x7a6f8e, 0x9a90ad]), x, sz * 0.55, z - 2, sz, sz * rand(0.9, 1.4), sz); rk.rotation.set(rand(0, 3), rand(0, 3), 0);
+  }
+  P(mt, G.dodec, 0x8a7f9e, 0, 13, -5, 13, 16, 12).rotation.set(0.3, 0.6, 0);
+  P(mt, G.dodec, 0x9a90ad, 0, 4, 3, 9, 6, 6).rotation.set(0, 0.4, 0);
+  // stone archway and dark mouth facing south
+  const arch = new THREE.Group(); arch.position.set(CAVE_DOOR.x, 0, CAVE_DOOR.z - 7.2); scene.add(arch);
+  const mouth = new THREE.Mesh(new THREE.CircleGeometry(4.2, 32, 0, Math.PI), MB(0x120c1a)); mouth.position.set(0, 0.02, 0.25); arch.add(mouth);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(4.4, 0.75, 10, 24, Math.PI), M(0x6e6482)); ring.position.set(0, 0, 0.3); ring.castShadow = true; arch.add(ring);
+  for (const s of [-1, 1]) P(arch, G.box, 0x6e6482, s * 4.4, 0.4, 0.3, 1.6, 0.8, 1.6);
+  P(arch, G.box, 0x5a4b78, 0, 0.03, 2.4, 6.5, 0.06, 5).castShadow = false; // dark path into the cave
+  for (const s of [-1, 1]) {
+    P(arch, G.cylLo, 0x5b4a3a, s * 6, 1.4, 1.2, 0.14, 2.8, 0.14);
+    const fl = P(arch, G.cone, M(0xffa53d, 0xff6a00), s * 6, 3.15, 1.2, 0.35, 0.9, 0.35); fl.castShadow = false; W.flames.push(fl);
+  }
   W.caveEyes = mt;
-  for (let i = 0; i < 6; i++) circC(CAVE_DOOR.x + 10 + rand(-6, 10), CAVE_DOOR.z + rand(-10, 10), 6);
-  circC(CAVE_DOOR.x + 14, CAVE_DOOR.z, 11);
-  sign(CAVE_DOOR.x - 8, CAVE_DOOR.z + 7, -Math.PI / 2, ['Catnap Cavern', 'Do NOT wake the King']);
+  circC(mx, mz, 12); circC(mx - 9, mz + 3, 6); circC(mx + 9, mz + 3, 6);
+  circC(CAVE_DOOR.x - 5.4, CAVE_DOOR.z - 6.9, 1.2); circC(CAVE_DOOR.x + 5.4, CAVE_DOOR.z - 6.9, 1.2);
+  sign(CAVE_DOOR.x + 8, CAVE_DOOR.z - 1, 0, ['Catnap Cavern', 'Do NOT wake the King']);
 }
 
 function buildCave() {
