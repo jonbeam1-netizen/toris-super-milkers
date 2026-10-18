@@ -186,10 +186,10 @@ function openHelp() {
     const shots = MILK_KEYS.map(k => `<div class="row"><span class="nm">${swatch(MILK[k].color)}${MILK[k].name}</span><span class="pr wide">${MILK[k].shot.desc}</span></div>`).join('');
     return `<header class="mh"><h2>How to play</h2>${B('Close', closeModal, { cls: 'ghost x' })}</header><div class="list">
       <h3>Controls</h3>
-      <div class="keys"><span><kbd>WASD</kbd> or arrows: walk (<kbd>Shift</kbd> to run)</span><span><kbd>E</kbd> or <kbd>Space</kbd>: main action</span><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>: other actions on the card</span>
+      <div class="keys"><span><kbd>WASD</kbd> or arrows: walk (<kbd>Shift</kbd> to run)</span><span><kbd>E</kbd>: main action</span><span><kbd>Space</kbd>: jump (hop right over fences!)</span><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>: other actions on the card</span>
       <span><kbd>C</kbd>: pick up or put down a cow</span><span><kbd>F</kbd> or click: squeeze the udder (hold to keep squirting)</span><span><kbd>I</kbd> bag · <kbd>Q</kbd> quests · <kbd>H</kbd> help · <kbd>M</kbd> sound</span><span>Mouse wheel: zoom</span></div>
       <h3>Your day</h3>
-      <p>Milk cows for milk, shear sheep for wool. The whiter the fleece, the better the sheep: brush them and feed clover to raise whiteness. Sell at the Moo Market in the Sheep-a-verse.</p>
+      <p>Milk cows for milk, shear sheep for wool. The whiter the fleece, the better the sheep: brush them and feed clover to raise whiteness. Sell everything in the Shipping Crate by your farmhouse, then spend coins at the Moo Market in the Sheep-a-verse on new cows, sheep and upgrades. Leveling up unlocks fancier cows.</p>
       <p>Feed wool to the Great Spindle to spin yarn. Weave yarn into the Heart of the Shield to power the force field that protects the castle city.</p>
       <p>At 20:00 evil kittens raid from Whisker Woods. Pick up a cow, carry her into battle, and squeeze. Every milk does something different:</p>
       ${shots}
@@ -266,7 +266,17 @@ function cardFor(it) {
     case 'board': return { title: 'Bounty Board', sub: 'Requests from the townsfolk', sw: '#b98a5e', lines: [`${state.bounties.filter(b => !b.done).length} open bounties`], acts: [{ key: 'E', label: 'Read bounties', fn: openBoard }] };
     case 'hayloft': return { title: 'Hay Loft', sub: 'Free hay once a day', sw: '#f2cf6b', lines: [state.flags.hayDay === state.day ? 'Come back tomorrow for more.' : '3 bundles of hay are waiting.'], acts: [{ key: 'E', label: 'Take hay', fn: takeHay, disabled: state.flags.hayDay === state.day }] };
     case 'clover': return { title: 'Clover Patch', sub: 'Sheep snacks', sw: '#5fcf6a', lines: [state.flags.cloverT > 0 ? `Regrowing: ${Math.ceil(state.flags.cloverT)}s` : 'A lucky clover is ready.'], acts: [{ key: 'E', label: 'Pick clover', fn: pickClover, disabled: state.flags.cloverT > 0 }] };
-    case 'home': return { title: "Tori's Farmhouse", sub: 'Home sweet home', sw: '#6f9be8', lines: ['Rest to restore your hearts and save.'], acts: [{ key: 'E', label: 'Rest & save', fn: restAtHome }] };
+    case 'home': {
+      const acts = [{ key: 'E', label: 'Rest & save', fn: restAtHome }];
+      if (state.t < DAY - 5) acts.push({ key: '1', label: 'Nap until evening', fn: waitForNight });
+      else acts.push({ key: '1', label: 'Sleep until morning', fn: sleepTillMorning });
+      return { title: "Tori's Farmhouse", sub: 'Home sweet home', sw: '#6f9be8', lines: [state.quest.i >= 7 ? 'Kittens raid at 20:00. Nap to skip ahead to the fight.' : 'Rest to restore hearts, or skip ahead in time.'], acts };
+    }
+    case 'crate': {
+      const m = crateValue('milk'), w = crateValue('wool'), g = crateValue('goods');
+      return { title: 'Shipping Crate', sub: 'Sells at full market price', sw: '#c89b6d', lines: [m + w + g ? `Milk ${m}c · Wool ${w}c · Treats ${g}c` : 'Nothing to sell yet. Milk your cows and shear your sheep!', 'Buy new cows and upgrades at the Moo Market in the Sheep-a-verse.'],
+        acts: [{ key: 'E', label: `Sell all milk (${m}c)`, fn: () => shipAll('milk'), disabled: !m }, { key: '1', label: `Sell all wool (${w}c)`, fn: () => shipAll('wool'), disabled: !w }, { key: '2', label: `Sell treats (${g}c)`, fn: () => shipAll('goods'), disabled: !g }] };
+    }
     case 'creamery': return { title: 'Creamery', sub: 'Milk Mixer', sw: '#ffb3d9', lines: [`Super Milker Milk owned: ${state.inv.goods.super || 0}`], acts: [{ key: 'E', label: 'Open Milk Mixer', fn: openMixer }] };
     case 'cave': {
       const sc = player.carrying && player.carrying.d.super > 0;
@@ -395,7 +405,8 @@ function initUI() {
     keys[k] = true;
     if (k === ' ' || k.startsWith('arrow')) e.preventDefault();
     if (e.repeat) return;
-    if (k === 'e' || k === ' ' || k === 'enter') runCardKey('E');
+    if (k === ' ') jump();
+    else if (k === 'e' || k === 'enter') runCardKey('E');
     else if (k === '1' || k === '2' || k === '3') runCardKey(k);
     else if (k === 'c') toggleCarry();
     else if (k === 'f') shootHeld = true;
@@ -423,7 +434,7 @@ function initUI() {
   const endJoy = ev => { if (ev.pointerId !== joy.id) return; joy.active = false; joy.x = joy.y = 0; base.hidden = true; };
   zone.addEventListener('pointerup', endJoy); zone.addEventListener('pointercancel', endJoy);
   const tb = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', ev => { ev.preventDefault(); audioInit(); down(); el.classList.add('press'); }); el.addEventListener('pointerup', () => { up && up(); el.classList.remove('press'); }); el.addEventListener('pointerleave', () => { up && up(); el.classList.remove('press'); }); };
-  tb('#b-act', () => runCardKey('E')); tb('#b-shoot', () => { shootHeld = true; }, () => { shootHeld = false; }); tb('#b-cow', toggleCarry);
+  tb('#b-act', () => runCardKey('E')); tb('#b-jump', jump); tb('#b-shoot', () => { shootHeld = true; }, () => { shootHeld = false; }); tb('#b-cow', toggleCarry);
   // title
   $('#t-new').onclick = () => { audioInit(); const ns = $('#t-new'); if (loadSave() && !ns.dataset.sure) { ns.dataset.sure = '1'; ns.textContent = 'Tap again to replace your saved farm'; return; } try { localStorage.removeItem(SAVE_KEY); } catch (e) { } startGame(null); };
   $('#t-cont').onclick = () => { audioInit(); startGame(loadSave()); };

@@ -177,6 +177,7 @@ body.touch #touch { display: block; }
 #b-shoot { right: calc(max(18px, var(--sar)) + 84px); bottom: calc(var(--sab) + 30px); width: 74px; height: 74px; background: #fdfbf2; }
 #b-cow { right: max(18px, var(--sar)); bottom: calc(var(--sab) + 14px); width: 64px; height: 64px; background: #fff1b0; }
 #b-cow.on { background: var(--berry); color: #fff; }
+#b-jump { right: calc(max(18px, var(--sar)) + 90px); bottom: calc(var(--sab) + 116px); width: 56px; height: 56px; background: #d6f6ff; }
 body.touch #card { bottom: calc(var(--sab) + 184px); }
 body.touch #weapon { bottom: auto; top: calc(var(--sat) + 290px); width: 200px; }
 body.touch #weapon small { display: none; }
@@ -230,6 +231,7 @@ body.touch #weapon small { display: none; }
     <button class="tbtn" id="b-act">Action</button>
     <button class="tbtn" id="b-shoot">Squirt</button>
     <button class="tbtn" id="b-cow">Grab<br>cow</button>
+    <button class="tbtn" id="b-jump">Jump</button>
   </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
@@ -249,7 +251,7 @@ body.touch #weapon small { display: none; }
       <button class="btn" id="t-help">How to play</button>
     </div>
     <div id="t-howto" class="tag-line" hidden>
-      <p><kbd>WASD</kbd> walk · <kbd>E</kbd> act · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> more actions · <kbd>C</kbd> grab a cow · hold <kbd>F</kbd> or the mouse to squirt her milk · <kbd>I</kbd> bag · <kbd>Q</kbd> quests</p>
+      <p><kbd>WASD</kbd> walk · <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · <kbd>E</kbd> act · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> more actions · <kbd>C</kbd> grab a cow · hold <kbd>F</kbd> or the mouse to squirt her milk · <kbd>I</kbd> bag · <kbd>Q</kbd> quests</p>
       <p>On a phone: drag on the left to walk, and use the buttons on the right.</p>
       <p>Your progress saves in this browser.</p>
     </div>

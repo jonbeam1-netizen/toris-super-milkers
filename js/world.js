@@ -18,7 +18,7 @@ function fenceLine(ax, az, bx, bz) {
   const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 3)), ry = -Math.atan2(bz - az, bx - ax);
   for (let i = 0; i <= n; i++) { const t = i / n; fencePosts.push(mtx(lerp(ax, bx, t), 0.7, lerp(az, bz, t), 0.16, 1.4, 0.16)); }
   for (const y of [0.6, 1.15]) fenceRails.push(mtx((ax + bx) / 2, y, (az + bz) / 2, L, 0.14, 0.09, ry));
-  segC(ax, az, bx, bz);
+  segC(ax, az, bx, bz, true);
 }
 function fenceRect(p, gateSide, gz, gw = 4.5) {
   fenceLine(p.x1, p.z1, p.x2, p.z1); fenceLine(p.x1, p.z2, p.x2, p.z2);
@@ -133,6 +133,13 @@ function buildFarm() {
   // Farmhouse
   house(HOUSE.x, HOUSE.z, Math.PI, 0xfff1d6, 0x6f9be8, { w: 10, d: 8, h: 5, flowers: true });
   P(scene, G.box, 0xffffff, HOUSE.x, 1.3, HOUSE.z - 4.05, 0.1, 0.1, 0.1);
+  // Shipping crate
+  const cr = new THREE.Group(); cr.position.set(CRATE.x, 0, CRATE.z); scene.add(cr);
+  P(cr, G.box, 0xc89b6d, 0, 0.7, 0, 2.6, 1.4, 1.8); P(cr, G.box, 0x9a6b4f, 0, 1.45, -0.2, 2.8, 0.15, 2.0).rotation.x = -0.35;
+  for (const y of [0.35, 1.05]) P(cr, G.box, 0x9a6b4f, 0, y, 0.92, 2.65, 0.14, 0.06);
+  for (let i = 0; i < 4; i++) P(cr, G.cyl, [0xfdfbf2, 0x8a5a3b, 0xff9fc0, 0xffe27a][i], -0.8 + i * 0.5, 1.6, 0.3, 0.14, 0.55, 0.14);
+  boxC(CRATE.x, CRATE.z, 2.8, 2);
+  sign(CRATE.x + 3.4, CRATE.z + 0.5, 0, ['Shipping Crate', 'Sell here!'], 1.6);
   // Creamery
   house(CREAMERY.x, CREAMERY.z, Math.PI, 0xffe3ef, 0xff8fb3, { w: 9, d: 7, h: 5 });
   sign(CREAMERY.x + 6, CREAMERY.z - 5, 0, ['Creamery', 'Milk Mixer']);

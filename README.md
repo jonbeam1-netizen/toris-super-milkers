@@ -16,7 +16,8 @@ A cute 3D milk-farming RPG that runs in your browser.
 | Key | Action |
 | --- | --- |
 | WASD / arrows | Walk (Shift to run) |
-| E / Space | Main action |
+| E | Main action |
+| Space | Jump (over fences too) |
 | 1 2 3 | Other actions |
 | C | Pick up / put down a cow |
 | Hold F or mouse | Squirt milk |

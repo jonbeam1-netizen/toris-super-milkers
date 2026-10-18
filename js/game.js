@@ -157,7 +157,7 @@ function buildStations() {
   S('spindle', SPINDLE.x, SPINDLE.z, 12); S('heart', C.x, C.z, 6.5); S('temple', TEMPLE.x, TEMPLE.z, 13); S('market', MARKET.x, MARKET.z, 9);
   S('board', BOARD.x, BOARD.z, 4); S('hayloft', BARN.x, BARN.z - 7.5, 5); S('clover', CLOVER.x, CLOVER.z, 3.5); S('home', HOUSE.x, HOUSE.z - 6, 4.5);
   S('creamery', CREAMERY.x - 1, CREAMERY.z - 6.5, 5); S('cave', CAVE_DOOR.x, CAVE_DOOR.z, 7); S('portal', CAVE.x, CAVE.z + 20, 5);
-  S('basket', SPINDLE.x + 7, SPINDLE.z + 5, 3);
+  S('basket', SPINDLE.x + 7, SPINDLE.z + 5, 3); S('crate', CRATE.x, CRATE.z, 4);
 }
 
 function initPlayer() {
@@ -228,6 +228,26 @@ function cloverSheep(e) {
 }
 function takeHay() { if (state.flags.hayDay === state.day) return; state.flags.hayDay = state.day; state.inv.hay += 3; toast('+3 hay from the loft.'); sfx('click'); }
 function pickClover() { if (state.flags.cloverT > 0) return; state.flags.cloverT = 25; state.inv.clover++; floatText(CLOVER.x, 1.5, CLOVER.z, '+1 clover', 'wool'); burst('sparkle', CLOVER.x, 0.8, CLOVER.z, 6, 0x9fffb0); }
+function crateValue(kind) {
+  if (kind === 'milk') return MILK_KEYS.reduce((a, k) => a + (state.inv.milk[k] || 0) * MILK[k].price, 0);
+  if (kind === 'wool') return state.inv.wool.reduce((a, c, t) => a + c * TIERS[t].sell, 0);
+  return RECIPES.reduce((a, r) => a + (r.sell ? (state.inv.goods[r.key] || 0) * r.sell : 0), 0);
+}
+function shipAll(kind) {
+  const v = crateValue(kind); if (!v) return;
+  if (kind === 'milk') MILK_KEYS.forEach(k => state.inv.milk[k] = 0);
+  else if (kind === 'wool') state.inv.wool = [0, 0, 0, 0, 0, 0];
+  else RECIPES.forEach(r => { if (r.sell) state.inv.goods[r.key] = 0; });
+  addCoins(v, CRATE.x, 2.5, CRATE.z); stat('sold'); sfx('coin'); burst('coin', CRATE.x, 1.5, CRATE.z, 10);
+}
+function waitForNight() {
+  if (state.t >= DAY - 5) return;
+  fadeScreen(() => { state.t = DAY - 5; state.hearts = maxHearts(); toast('Tori naps until evening. The sun is setting...'); });
+}
+function sleepTillMorning() {
+  if (raid.active && (raid.queue.length || kittens.some(k => !k.cave && k.state === 'move'))) { toast("You can't sleep with kittens on the loose!", 'bad'); return; }
+  fadeScreen(() => { state.t = CYCLE - 0.5; state.hearts = maxHearts(); saveGame(true); });
+}
 function restAtHome() {
   if (player.restCd > 0) { toast('You just rested. Try again in a bit.'); return; }
   player.restCd = 60; state.hearts = maxHearts(); saveGame(true); toast('Tori naps on the porch. Hearts restored and game saved.', 'good'); burst('heart', px(), 2.5, pz(), 6);
@@ -857,11 +877,12 @@ function updateCaveFx(dt) {
    ============================================================ */
 function updatePlayer(dt) {
   const inp = getMoveInput();
-  const sp = UPG.boots.vals[state.upg.boots] * (hasBuff('speed') ? 1.5 : 1) * (inp.run ? 1.3 : 1) * (player.carrying ? 0.88 : 1);
+  const sp = UPG.boots.vals[state.upg.boots] * (hasBuff('speed') ? 1.5 : 1) * (inp.run ? 1.6 : 1) * (player.carrying ? 0.88 : 1);
   const k = 1 - Math.exp(-12 * dt);
   player.vx = lerp(player.vx, inp.x * sp, k); player.vz = lerp(player.vz, inp.z * sp, k);
   const pos = player.g.position; pos.x += player.vx * dt; pos.z += player.vz * dt;
-  collide(pos, 0.6);
+  player.jvy = (player.jvy || 0) - 26 * dt; player.jy = Math.max(0, (player.jy || 0) + player.jvy * dt); if (player.jy === 0) player.jvy = 0;
+  collide(pos, 0.6, player.jy > 0.6);
   for (const e of cowEnts) if (!e.carried) { const dx = pos.x - e.g.position.x, dz = pos.z - e.g.position.z, d = Math.hypot(dx, dz); if (d < 1.5 && d > 0.01) { pos.x = e.g.position.x + dx / d * 1.5; pos.z = e.g.position.z + dz / d * 1.5; } }
   if (player.inCave) { const dx = pos.x - CAVE.x, dz = pos.z - CAVE.z, d = Math.hypot(dx, dz); if (d > CAVE.r - 1.5) { pos.x = CAVE.x + dx / d * (CAVE.r - 1.5); pos.z = CAVE.z + dz / d * (CAVE.r - 1.5); } }
   else { pos.x = clamp(pos.x, -195, 195); pos.z = clamp(pos.z, -178, 138); }
@@ -875,7 +896,7 @@ function updatePlayer(dt) {
   player.legs[0].rotation.x = sw; player.legs[1].rotation.x = -sw;
   if (player.carrying) { player.arms.forEach(a => { a.rotation.x = -1.35; a.rotation.z = 0; }); }
   else { player.arms[0].rotation.x = -sw * 0.8; player.arms[1].rotation.x = sw * 0.8; }
-  pos.y = moving ? Math.abs(Math.sin(player.walk)) * 0.12 : 0;
+  pos.y = player.jy + (moving && player.jy === 0 ? Math.abs(Math.sin(player.walk)) * 0.12 : 0);
   player.g.visible = !(player.inv > 0 && Math.floor(player.inv * 12) % 2 === 0 && player.inv < 1.1);
   player.inv -= dt; player.shotCd -= dt; player.restCd = (player.restCd || 0) - dt;
   for (const b in player.buffs) player.buffs[b] = Math.max(0, player.buffs[b] - dt);
@@ -983,7 +1004,7 @@ function updateMarkers() {
 }
 function updateWorld(dt) {
   const sp = state.spindle, spinning = sp.momentum > 0 && sp.queue.length > 0;
-  if (sp.momentum > 0) {
+  if (sp.momentum > 0 && state.quest.i >= 5) {
     sp.momentum = Math.max(0, sp.momentum - dt * 0.25);
     if (sp.momentum === 0) toast('The Great Spindle has stopped! Feed it wool to keep the yarn coming.', 'bad');
   }
@@ -995,7 +1016,7 @@ function updateWorld(dt) {
   W.spWheel.rotation.z -= dt * wspd; W.spinner.rotation.y += dt * wspd * 4; W.spRing.rotation.z += dt * (0.3 + wspd * 0.2);
   W.cop.scale.set(1.2 + sp.momentum / 220, 2.6 + sp.momentum / 120, 1.2 + sp.momentum / 220);
   W.basketYarn.visible = basketTotal() > 0;
-  if (state.field.power > 0 && !state.flags.breached) state.field.power = Math.max(0, state.field.power - dt * 0.15 * (faithLevel() >= 2 ? 0.7 : 1));
+  if (state.field.power > 0 && !state.flags.breached && state.quest.i >= 6) state.field.power = Math.max(0, state.field.power - dt * 0.15 * (faithLevel() >= 2 ? 0.7 : 1));
   if (state.field.power <= 0 && !state.flags.breached && raid.active) breach();
   const pr = state.field.power / maxPower(); domeFlash = Math.max(0, domeFlash - dt * 1.5);
   const dm = W.dome.material;
@@ -1041,7 +1062,10 @@ function clockStr() {
 }
 function updateTime(dt) {
   const before = state.t; state.t += dt;
-  if (before < DAY && state.t >= DAY) startRaid();
+  if (before < DAY && state.t >= DAY) {
+    if (state.quest.i >= 7) startRaid();
+    else toast('Night falls on the meadow. The evil kittens are still napping... for now.');
+  }
   if (raid.active) {
     raid.timer += dt;
     while (raid.queue.length && raid.queue[0].at <= raid.timer) { const w = raid.queue.shift(); spawnKitten(w.t, w.goal); }
@@ -1069,6 +1093,11 @@ function findTarget() {
   return best;
 }
 function interact() { const a = cardActions[0]; if (a && !a.disabled) { a.fn(); cardDirty = true; } }
+function jump() {
+  if (!running || paused || (player.jy || 0) > 0.05) return;
+  player.jvy = 10.5; player.jy = 0.01; sfx('pickup');
+  if (player.carrying && Math.random() < 0.3) sfx('moo');
+}
 function toggleCarry() {
   if (player.carrying) { putDownCow(); cardDirty = true; return; }
   let best = null, bd = 3.6;

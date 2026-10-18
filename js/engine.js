@@ -21,7 +21,7 @@ const COW_PEN = { x1: -58, x2: -12, z1: 28, z2: 78 };
 const SHEEP_PEN = { x1: 12, x2: 58, z1: 28, z2: 78 };
 const SPINDLE = { x: -28, z: -98 }, TEMPLE = { x: 24, z: -116 }, MARKET = { x: 28, z: -66 }, KEEP = { x: 0, z: -131 }, BOARD = { x: -9, z: -48 };
 const BARN = { x: -36, z: 92 }, HOUSE = { x: 0, z: 116 }, CREAMERY = { x: 36, z: 93 }, CLOVER = { x: 50, z: 70 }, POND = { x: 64, z: 104 };
-const SPAWN = { x: 0, z: 88 };
+const SPAWN = { x: 0, z: 88 }, CRATE = { x: 8, z: 104 };
 const CAVE_DOOR = { x: 168, z: -22 };   // Catnap Cavern entrance (overworld)
 const CAVE = { x: 0, z: 560, r: 34 };   // the cavern arena lives far south, hidden by fog
 const MARKET_PEN = { x: 40, z: -84 };
@@ -260,17 +260,18 @@ function sfx(n) {
 
 /* ---------- Collision ---------- */
 const segs = [], circs = [];
-function segC(ax, az, bx, bz) { segs.push([ax, az, bx, bz]); }
+function segC(ax, az, bx, bz, low) { segs.push([ax, az, bx, bz, !!low]); }
 function circC(x, z, r) { circs.push([x, z, r]); }
 function boxC(x, z, w, d) { const hw = w / 2, hd = d / 2; segC(x - hw, z - hd, x + hw, z - hd); segC(x + hw, z - hd, x + hw, z + hd); segC(x + hw, z + hd, x - hw, z + hd); segC(x - hw, z + hd, x - hw, z - hd); }
-function collide(p, r) {
+function collide(p, r, airborne) {
   for (let i = 0; i < circs.length; i++) {
     const c = circs[i], dx = p.x - c[0], dz = p.z - c[1], m = c[2] + r;
     if (dx > m || dx < -m || dz > m || dz < -m) continue;
     const d = Math.hypot(dx, dz); if (d < m && d > 1e-4) { p.x = c[0] + dx / d * m; p.z = c[1] + dz / d * m; }
   }
   for (let i = 0; i < segs.length; i++) {
-    const s = segs[i], ax = s[0], az = s[1], vx = s[2] - ax, vz = s[3] - az;
+    const s = segs[i]; if (airborne && s[4]) continue;
+    const ax = s[0], az = s[1], vx = s[2] - ax, vz = s[3] - az;
     if (p.x < Math.min(ax, s[2]) - r - 1 || p.x > Math.max(ax, s[2]) + r + 1 || p.z < Math.min(az, s[3]) - r - 1 || p.z > Math.max(az, s[3]) + r + 1) continue;
     const L = vx * vx + vz * vz; let t = ((p.x - ax) * vx + (p.z - az) * vz) / L; t = clamp(t, 0, 1);
     const cx = ax + vx * t, cz = az + vz * t, dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz);
